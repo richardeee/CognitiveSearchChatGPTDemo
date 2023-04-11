@@ -17,7 +17,8 @@ class ChatReadRetrieveReadApproach(Approach):
 info1.txt: 内容 <http://www.example.com/info1.txt>
 输出: 根据[info1.txt](http://www.example.com/info1.txt)，内容
 不要合并来源，而是单独列出每个来源，例如 [info1.txt][info2.pdf].
-不要使用引用，而是始终将来源路径放在()中，例如(http://www.example.com/info1.txt)(http://www.example.com/info2.pdf)
+不要使用引用，而是始终将来源路径放在()中，例如(http://www.example.com/info1.txt)(http://www.example.com/info2.pdf).
+对于表格形式的数据，请以HTML表格形式输出，不要使用Markdown表格.
 
 {follow_up_questions_prompt}
 {injected_prompt}
