@@ -29,7 +29,9 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend }: Pr
     };
 
     const speechToText = () => {
-        var speechConfig = SpeechConfig.fromSubscription('<your subscription key>','southeastasia');
+        const speech_key = "e985cb0392ad45d59681a396b208ebcf"
+        const speech_region = "southcentralus"
+        var speechConfig = SpeechConfig.fromSubscription(speech_key,speech_region);
         const audioConfig = AudioConfig.fromDefaultMicrophoneInput();
         speechConfig.speechRecognitionLanguage = "zh-CN";
         const speechRecognizer = new SpeechRecognizer(speechConfig, audioConfig);

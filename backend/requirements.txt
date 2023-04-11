@@ -12,3 +12,4 @@ requests
 azure-cognitiveservices-speech==1.22.0
 python-dotenv
 azure-ai-formrecognizer==3.2.1
+pypdf==3.7.1

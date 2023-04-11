@@ -9,11 +9,11 @@ export type ExampleModel = {
 
 const EXAMPLES: ExampleModel[] = [
     {
-        text: "九节菖蒲与石菖蒲是同一植物吗?",
-        value: "九节菖蒲与石菖蒲是同一植物吗?"
+        text: "正常DMS计算公式是什么?",
+        value: "正常DMS计算公式是什么?"
     },
-    { text: "餐饮食品吃拉肚子想要做检测，有什么标准可依?", value: "餐饮食品吃拉肚子想要做检测，有什么标准可依?" },
-    { text: "茶叶按9833.3测试冠突散囊菌，如何知道茶叶是否长毛?", value: "茶叶按9833.3测试冠突散囊菌，如何知道茶叶是否长毛?" }
+    { text: "进货未销定义是什么?", value: "进货未销定义?" },
+    { text: "APP与OSPC端门店货源查询退货状态不一致 门店商品退货状态系统逻辑?", value: "APP与OSPC端门店货源查询退货状态不一致 门店商品退货状态系统逻辑?" }
 ];
 
 interface Props {
