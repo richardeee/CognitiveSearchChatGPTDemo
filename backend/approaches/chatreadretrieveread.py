@@ -14,10 +14,10 @@ class ChatReadRetrieveReadApproach(Approach):
 每个源都有一个名称，后跟冒号和实际信息，始终包括您在响应中使用的每个事实的源名称。使用方形制动器来引用源。
 例如:
 来源：
-info1.txt: 内容 <http://www.example.com/info1.txt>
-输出: 根据[info1.txt](http://www.example.com/info1.txt)，内容
+info1.txt: 内容 <http://www.somedomain1.com/info1.txt>
+输出: 根据[info1.txt](http://www.somedomain2.com/info1.txt)，内容
 不要合并来源，而是单独列出每个来源，例如 [info1.txt][info2.pdf].
-不要使用引用，而是始终将来源路径放在()中，例如(http://www.example.com/info1.txt)(http://www.example.com/info2.pdf).
+不要使用引用，而是始终将来源路径放在()中，例如(http://www.somedomain1.com/info1.txt)(http://www.somedomain2.com/info2.pdf).
 对于表格形式的数据，请以HTML表格形式输出，不要使用Markdown表格.
 
 {follow_up_questions_prompt}
@@ -62,14 +62,15 @@ info1.txt: 内容 <http://www.example.com/info1.txt>
         top = overrides.get("top") or 3
         exclude_category = overrides.get("exclude_category") or None
         filter = "category ne '{}'".format(exclude_category.replace("'", "''")) if exclude_category else None
-
+        question = history[-1]["user"]
+        
         # STEP 1: Generate an optimized keyword search query based on the chat history and the last question
         prompt = self.query_prompt_template.format(chat_history=self.get_chat_history_as_text(history, include_last_turn=False), question=history[-1]["user"])
         completion = openai.Completion.create(
             engine=self.gpt_deployment, 
             prompt=prompt, 
             temperature=0.0, 
-            max_tokens=1000, 
+            max_tokens=500, 
             n=1, 
             stop=["\n"])
         q = completion.choices[0].text
@@ -85,7 +86,8 @@ info1.txt: 内容 <http://www.example.com/info1.txt>
                                           top=top, 
                                           query_caption="extractive|highlight-false" if use_semantic_captions else None)
         else:
-            r = self.search_client.search(q, filter=filter, top=top)
+            # r = self.search_client.search(q, filter=filter, top=top)
+            r = self.search_client.search(question, filter=filter, top=top)
             
         if use_semantic_captions:
             results = [doc[self.sourcepage_field] + ": " + nonewlines(" . ".join([c.text for c in doc['@search.captions']])) for doc in r]
@@ -97,17 +99,26 @@ info1.txt: 内容 <http://www.example.com/info1.txt>
             
         question=history[-1]["user"]
         
-        search_result = []         
-        cognitive_search_result = "\n".join(results)
+        if len(results) > 0: 
+            search_result = []         
+            cognitive_search_result = "\n".join(results)
+            content = cognitive_search_result
+            supporting_facts = results
+        else:
+            search_result = self.get_bing_search_result(question, top)
+            bing_search_result = "\n".join(search_result)
+            content = bing_search_result
+            supporting_facts = bing_search_result
+        
         # content = cognitive_search_result
-        #Use Bing Search to provide more information besides knowledge base
-        search_result = self.get_bing_search_result(question, top)
-        bing_search_result = "\n".join(search_result)
-        cognitive_search_result = "\n".join(results)
-        content = cognitive_search_result + "\n" + bing_search_result           
+        # Use Bing Search to provide more information besides knowledge base
+        # search_result = self.get_bing_search_result(question, top)
+        # bing_search_result = "\n".join(search_result)
+        # cognitive_search_result = "\n".join(results)
+        # content = cognitive_search_result + "\n" + bing_search_result           
         
   
-        supporting_facts = results + search_result
+        # supporting_facts = results + search_result
         
         # STEP 3: Generate a response with the retrieved documents as prompt
         follow_up_questions_prompt = self.follow_up_questions_prompt_content if overrides.get("suggest_followup_questions") else ""
@@ -127,7 +138,7 @@ info1.txt: 内容 <http://www.example.com/info1.txt>
             engine=self.chatgpt_deployment, 
             prompt=prompt, 
             temperature=overrides.get("temperature") or 0.0, 
-            max_tokens=6000, 
+            max_tokens=2000, 
             n=1, 
             stop=["<|im_end|>", "<|im_start|>"])
 

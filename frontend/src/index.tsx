@@ -2,6 +2,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { initializeIcons } from "@fluentui/react";
+import { initializeFileTypeIcons } from '@fluentui/react-file-type-icons';
+initializeFileTypeIcons(/* optional base url */);
 
 
 import "./index.css";
@@ -21,7 +23,7 @@ export default function App() {
                 <Route path="/" element={<Layout />}>
                     <Route index element={<Chat />} />
                     <Route path="qa" element={<OneShot />} />
-                    <Route path="files" element={<Files/>} />
+                    {/* <Route path="files" element={<Files/>} /> */}
                     <Route path="*" element={<NoPage />} />
                 </Route>
             </Routes>

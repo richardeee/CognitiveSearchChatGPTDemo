@@ -12,6 +12,8 @@
     "@fluentui/react": "^8.105.3",
     "@fluentui/react-icons": "^2.0.195",
     "@react-spring/web": "^9.7.1",
+    "@fluentui/react-components": "^9.0.0",
+    "@fluentui/react-file-type-icons": "^8.8.13",
     "dompurify": "^3.0.1",
     "microsoft-cognitiveservices-speech-sdk": "^1.26.0",
     "react": "^18.2.0",
