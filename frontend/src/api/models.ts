@@ -61,3 +61,9 @@ export type ChatRequest = {
 export type ReadRequest = {
     answer: string;
 }
+
+export type File = {
+    fileName: string;
+    filePath: string;
+    parsed: boolean;
+}

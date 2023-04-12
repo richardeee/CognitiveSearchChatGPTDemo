@@ -10,7 +10,7 @@ import Layout from "./pages/layout/Layout";
 import NoPage from "./pages/NoPage";
 import OneShot from "./pages/oneshot/OneShot";
 import Chat from "./pages/chat/Chat";
-import AskBing from "./pages/askbing/AskBing";
+import Files from "./pages/fileViewer/Files";
 
 initializeIcons();
 
@@ -21,7 +21,7 @@ export default function App() {
                 <Route path="/" element={<Layout />}>
                     <Route index element={<Chat />} />
                     <Route path="qa" element={<OneShot />} />
-                    <Route path="bing" element={<AskBing/>} />
+                    <Route path="files" element={<Files/>} />
                     <Route path="*" element={<NoPage />} />
                 </Route>
             </Routes>

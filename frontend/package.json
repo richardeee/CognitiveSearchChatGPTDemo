@@ -16,7 +16,8 @@
     "microsoft-cognitiveservices-speech-sdk": "^1.26.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.8.1"
+    "react-router-dom": "^6.8.1",
+    "react-uploader": "^3.13.0"
   },
   "devDependencies": {
     "@types/dompurify": "^2.4.0",
