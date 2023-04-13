@@ -9,7 +9,7 @@ azure.identity
 azure.storage
 azure.core
 requests
-azure-cognitiveservices-speech==1.22.0
+azure-cognitiveservices-speech==1.22.0cd 
 python-dotenv
 azure-ai-formrecognizer==3.2.1
 pypdf==3.7.1
