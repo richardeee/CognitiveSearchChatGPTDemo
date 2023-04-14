@@ -35,7 +35,7 @@ import {
     DialogTitle,
     DialogBody,
     DialogActions,
-    DialogContent,
+    ButtonProps,
     Text
 } from "@fluentui/react-components";
 import * as React from "react";
@@ -160,7 +160,6 @@ const columns: TableColumnDefinition<Item>[] = [
 ];
 
 export const DataGrid = () => {
-    const [selectedRows, setSelectedRows] = useState(new Set([]));
     const {
         getRows,
         selection: { allRowsSelected, someRowsSelected, toggleAllRows, toggleRow, isRowSelected },
@@ -221,6 +220,7 @@ export const DataGrid = () => {
             }
         }
     };
+
 
     return (
         <div className={styles.container}>
@@ -290,7 +290,7 @@ export const DataGrid = () => {
                                 <DialogTrigger disableButtonEnhancement>
                                     <Button appearance="secondary">取消</Button>
                                 </DialogTrigger>
-                                <Button appearance="primary" >确认</Button>
+                                <Button appearance="primary"  onClick={processSelectedFiles}>确认</Button>
                             </DialogActions>
                         </DialogSurface>
                     </Dialog>
