@@ -81,6 +81,7 @@ def blob_name_from_file_page(filename, page = 0):
 def upload_blobs(filename):
     blob_service = BlobServiceClient(account_url=f"https://{args.storageaccount}.blob.core.chinacloudapi.cn/", credential=storage_creds)
     blob_container = blob_service.get_container_client(args.container)
+    files_uploaded = []
     if not blob_container.exists():
         blob_container.create_container()
 
@@ -96,6 +97,8 @@ def upload_blobs(filename):
             writer.add_page(pages[i])
             writer.write(f)
             f.seek(0)
+            local_file_path = os.path.splitext(os.path.basename(filename))[0] + f"-{i}" + ".pdf"
+            writer.write(local_file_path)
             remote_file_path = os.path.join(args.folder+'/', blob_name)
             blob_container.upload_blob(remote_file_path, f, overwrite=True)
     else:
@@ -147,11 +150,12 @@ def get_document_text(filename):
         if args.verbose: print(f"Extracting text from '{filename}' using Azure Form Recognizer")
         form_recognizer_client = DocumentAnalysisClient(endpoint=f"https://{args.formrecognizerservice}.cognitiveservices.azure.cn/", credential=formrecognizer_creds, headers={"x-ms-useragent": "azure-search-chat-demo/1.0.0"})
         with open(filename, "rb") as f:
-            poller = form_recognizer_client.begin_analyze_document("prebuilt-read", document = f)
+            poller = form_recognizer_client.begin_analyze_document("prebuilt-layout", document = f)
+            # poller = form_recognizer_client.begin_analyze_document_from_url("prebuilt-layout", document_url = f"https://{args.storageaccount}.blob.core.chinacloudapi.cn/{args.container}/{args.folder}/{blob_name_from_file_page(filename)}")
         form_recognizer_results = poller.result()
-        print(form_recognizer_results.pages)
+        # print(form_recognizer_results.pages)
         for page_num, page in enumerate(form_recognizer_results.pages):
-            print(f"{page_num}: {page}" )
+            # print(f"{page_num}: {page}" )
             tables_on_page = [table for table in form_recognizer_results.tables if table.bounding_regions[0].page_number == page_num + 1]
 
             # mark all positions of the table spans in the page
@@ -244,18 +248,19 @@ def split_text(page_map):
 
 def create_sections(filename, page_map):
     for i, (section, pagenum) in enumerate(split_text(page_map)):
-        encoded_id = base64.b64encode(f"{filename}-{i}".encode('utf-8'))
+        # encoded_id = base64.b64encode(f"{filename}-{i}".encode('utf-8'))
+        encoded_id = base64.urlsafe_b64encode(f"{filename}-{i}-section-{i}".encode('utf-8'))
         encoded_id_str = str(encoded_id.decode('utf-8'))
-        print(encoded_id_str)
+        print(f"{encoded_id_str}: {os.path.basename(filename)}")
         yield {
             # "id": re.sub("[^0-9a-zA-Z_-]","_",f"{filename}-{i}"),
             "id": encoded_id_str,
             "content": section,
             "category": args.category,
-            "sourcepage": blob_name_from_file_page(filename, pagenum),
-            "sourcefile": filename,
-            "metadata_storage_name": filename,
-            "metadata_storage_path": f"https://{args.storageaccount}.blob.core.chinacloudapi.cn/{args.container}/{args.folder}/{blob_name_from_file_page(filename, pagenum)}"
+            "sourcepage": os.path.basename(filename),
+            "sourcefile": os.path.basename(filename),
+            "metadata_storage_name": os.path.basename(filename),
+            "metadata_storage_path": f"https://{args.storageaccount}.blob.core.chinacloudapi.cn/{args.container}/{args.folder}/{os.path.basename(filename)}"
         }
 
 def create_search_index():
@@ -296,7 +301,7 @@ def index_sections(filename, sections):
     for s in sections:
         batch.append(s)
         i += 1
-        if i % 1000 == 0:
+        if i % 100 == 0:
             results = search_client.upload_documents(documents=batch)
             succeeded = sum([1 for r in results if r.succeeded])
             if args.verbose: print(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
@@ -322,6 +327,12 @@ def remove_from_index(filename):
         # It can take a few seconds for search results to reflect changes, so wait a bit
         time.sleep(2)
 
+def get_pages(filename):
+    with open(filename, 'rb') as f:
+       reader = PdfReader(f)
+       for i in range(reader.pages):
+            yield i
+
 if args.removeall:
     remove_blobs(None)
     remove_from_index(None)
@@ -341,6 +352,13 @@ else:
         else:
             if not args.skipblobs:
                 upload_blobs(filename)
-            page_map = get_document_text(filename)
-            sections = create_sections(os.path.basename(filename), page_map)
-            index_sections(os.path.basename(filename), sections)
+            reader = PdfReader(filename)
+            pages = reader.pages
+            for i in range(len(pages)):
+                f = blob_name_from_file_page(filename,i)
+                page_map = get_document_text(f)
+                sections = create_sections(f, page_map)
+                index_sections(f, sections)
+            # page_map = get_document_text(filename)
+            # sections = create_sections(os.path.basename(filename), page_map)
+            # index_sections(os.path.basename(filename), sections)
