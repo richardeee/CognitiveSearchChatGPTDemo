@@ -1,7 +1,6 @@
 import re
 import PyPDF2
 import pdfplumber
-<<<<<<< HEAD
 
 def find_chapters(page_text):
     patterns = [
@@ -40,40 +39,6 @@ def find_chapters(page_text):
 def splitkeep(s, regex):
     split = re.split(regex, s)
     return [substr for substr in split[:-1]] + [split[-1]]
-=======
-# from operations import itemgetter
-
-def find_chapters(page_text):
-    patterns = [
-        r"\b(?:第)?\s*(\d+)\s*(?:章)?",
-        r"\((\d+)\)",
-        r"\b(?:Chapter)?\s*(\d+)"
-    ]
-
-    for pattern in patterns:
-        match = re.search(pattern, page_text, re.I)
-        if match:
-            return int(match.group(1))
-
-    return None
-def curves_to_edges(cs):
-    """See https://github.com/jsvine/pdfplumber/issues/127"""
-    edges = []
-    for c in cs:
-        edges += pdfplumber.utils.rect_to_edges(c)
-    return edges
-bboxes = []
-
-def not_within_bboxes(obj):
-    """Check if the object is in any of the table's bbox."""
-    def obj_in_bbox(_bbox):
-        """See https://github.com/jsvine/pdfplumber/blob/stable/pdfplumber/table.py#L404"""
-        v_mid = (obj["top"] + obj["bottom"]) / 2
-        h_mid = (obj["x0"] + obj["x1"]) / 2
-        x0, top, x1, bottom = _bbox
-        return (h_mid >= x0) and (h_mid < x1) and (v_mid >= top) and (v_mid < bottom)
-    return not any(obj_in_bbox(__bbox) for __bbox in bboxes)
->>>>>>> a2d05e99a2db2e212c68a162cf50c253aca45c51
 
 def split_pdf(input_pdf, output_pdf_prefix):
     with pdfplumber.open(input_pdf) as pdf:
