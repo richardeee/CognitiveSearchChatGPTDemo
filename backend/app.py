@@ -215,7 +215,8 @@ def readOutLoud():
         return stream
     stream = generate()
     return Response(stream.read(), mimetype="audio/mp3")
-                
+
+      
 def ensure_openai_token():
     # global openai_token
     # if openai_token.expires_on < int(time.time()) - 60:

@@ -290,7 +290,7 @@ export const DataGrid = () => {
                                 <DialogTrigger disableButtonEnhancement>
                                     <Button appearance="secondary">取消</Button>
                                 </DialogTrigger>
-                                <Button appearance="primary"  onClick={processSelectedFiles}>确认</Button>
+                                <Button appearance="primary" >确认</Button>
                             </DialogActions>
                         </DialogSurface>
                     </Dialog>

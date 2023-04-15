@@ -10,23 +10,23 @@ import json
 # (answer) with that prompt.
 class ChatReadRetrieveReadApproach(Approach):
     prompt_prefix = """<|im_start|>系统助理帮助公司员工解决他们的问题，回答要简短。
-仅回答以下来源列表中列出的事实。如果下面没有足够的信息，请说您不知道。不要生成不使用以下来源的答案。不要使用年代久远的来源信息。如果向用户提出澄清问题会有所帮助，请提出问题。
-每个源都有一个名称，后跟冒号和实际信息，始终包括您在响应中使用的每个事实的源名称。使用方形制动器来引用源。
-例如:
-来源：
-info1.txt: 内容 <http://www.somedomain1.com/info1.txt>
-输出: 根据[info1.txt](http://www.somedomain2.com/info1.txt)，内容
-不要合并来源，而是单独列出每个来源，例如 [info1.txt][info2.pdf].
-不要使用引用，而是始终将来源路径放在()中，例如(http://www.somedomain1.com/info1.txt)(http://www.somedomain2.com/info2.pdf).
-对于表格形式的数据，请以HTML表格形式输出，不要使用Markdown表格.
+    仅回答以下来源列表中列出的事实。如果下面没有足够的信息，请说您不知道。不要生成不使用以下来源的答案。不要使用年代久远的来源信息。如果向用户提出澄清问题会有所帮助，请提出问题。
+    每个源都有一个名称，后跟冒号和实际信息，始终包括您在响应中使用的每个事实的源名称。使用方形制动器来引用源。对于表格形式的数据，请以HTML表格形式输出，不要使用Markdown表格格式。
+    例如:
+    来源：
+    info1.txt: 内容 <http://www.somedomain1.com/info1.txt>
+    输出: 根据[info1.txt](http://www.somedomain2.com/info1.txt)，内容
+    不要合并来源，而是单独列出每个来源，例如 [info1.txt][info2.pdf].
+    不要使用引用，而是始终将来源路径放在()中，例如(http://www.somedomain1.com/info1.txt)(http://www.somedomain2.com/info2.pdf).
+    
 
-{follow_up_questions_prompt}
-{injected_prompt}
-来源:
-{sources}
-<|im_end|>
-{chat_history}
-"""
+    {follow_up_questions_prompt}
+    {injected_prompt}
+    来源:
+    {sources}
+    <|im_end|>
+    {chat_history}
+    """
 
     follow_up_questions_prompt_content = """生成三个非常简短的后续问题。
     使用双尖括号来引用问题，例如<<面条是否可以用体外模拟进行GI测试？>>。
@@ -38,14 +38,14 @@ info1.txt: 内容 <http://www.somedomain1.com/info1.txt>
     请勿在搜索查询词中包含引用的源文件名和文档名称，例如信息.txt或文档.pdf。
     不要在搜索查询词的 [] 或<<>>中包含任何文本。
 
-历史对话:
-{chat_history}
+    历史对话:
+    {chat_history}
 
-问题:
-{question}
+    问题:
+    {question}
 
-查询条件:
-"""
+    查询条件:
+    """
 
     def __init__(self, search_client: SearchClient, chatgpt_deployment: str, gpt_deployment: str, sourcepage_field: str, content_field: str, sourcepage_path_field: str, subscription_key: str, bing_search_endpoint: str):
         self.search_client = search_client
@@ -92,7 +92,7 @@ info1.txt: 内容 <http://www.somedomain1.com/info1.txt>
         if use_semantic_captions:
             results = [doc[self.sourcepage_field] + ": " + nonewlines(" . ".join([c.text for c in doc['@search.captions']])) for doc in r]
         else:
-            results = [doc[self.sourcepage_field] + ": " + nonewlines(doc[self.content_field]) + " <" + doc[self.sourcepage_path_field] + ">" for doc in r if doc['@search.score'] > 10.0]
+            results = [doc[self.sourcepage_field] + ": " + nonewlines(doc[self.content_field]) + " <" + doc[self.sourcepage_path_field] + ">" for doc in r if doc['@search.score'] > 7.0]
         
         for r in results:
             print(r)
@@ -109,16 +109,6 @@ info1.txt: 内容 <http://www.somedomain1.com/info1.txt>
             bing_search_result = "\n".join(search_result)
             content = bing_search_result
             supporting_facts = bing_search_result
-        
-        # content = cognitive_search_result
-        # Use Bing Search to provide more information besides knowledge base
-        # search_result = self.get_bing_search_result(question, top)
-        # bing_search_result = "\n".join(search_result)
-        # cognitive_search_result = "\n".join(results)
-        # content = cognitive_search_result + "\n" + bing_search_result           
-        
-  
-        # supporting_facts = results + search_result
         
         # STEP 3: Generate a response with the retrieved documents as prompt
         follow_up_questions_prompt = self.follow_up_questions_prompt_content if overrides.get("suggest_followup_questions") else ""
