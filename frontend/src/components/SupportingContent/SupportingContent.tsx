@@ -7,6 +7,7 @@ interface Props {
 }
 
 export const SupportingContent = ({ supportingContent }: Props) => {
+    console.log('supportingContent' + supportingContent)
     return (
         <ul className={styles.supportingContentNavList}>
             {supportingContent.map((x, i) => {

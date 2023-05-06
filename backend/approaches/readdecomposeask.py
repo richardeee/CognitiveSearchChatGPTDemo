@@ -4,22 +4,32 @@ from azure.search.documents import SearchClient
 from azure.search.documents.models import QueryType
 from langchain.chat_models  import AzureChatOpenAI
 from langchain.llms.openai import AzureOpenAI
+from langchain.chat_models import AzureChatOpenAI
 from langchain.prompts import PromptTemplate, BasePromptTemplate
-# from langchain.callbacks.base import CallbackManager
-from langchain.agents import Tool, AgentExecutor
+from langchain.schema import AgentAction, AgentFinish, HumanMessage
+from langchain.agents import Tool, AgentExecutor, LLMSingleActionAgent, AgentOutputParser
+from langchain.prompts import BaseChatPromptTemplate
 from langchain.agents.react.base import ReActDocstoreAgent
 from langchainadapters import HtmlCallbackHandler
+from langchain import LLMChain
 from text import nonewlines
-from typing import List
+from typing import List, Union
+import requests
+import re
+import json
+import tiktoken
+import math
 
 class ReadDecomposeAsk(Approach):
-    def __init__(self, search_client: SearchClient, openai_deployment: str, sourcepage_field: str, content_field: str, azure_openai_key: str, azure_openai_base: str):
+    def __init__(self, search_client: SearchClient, openai_deployment: str, sourcepage_field: str, content_field: str, azure_openai_key: str, azure_openai_base: str, bing_search_subscriptin_key: str, bing_search_endpoint: str):
         self.search_client = search_client
         self.openai_deployment = openai_deployment
         self.sourcepage_field = sourcepage_field
         self.content_field = content_field
         self.azure_openai_key = azure_openai_key
         self.azure_openai_base = azure_openai_base
+        self.bing_search_subscriptin_key = bing_search_subscriptin_key
+        self.bing_search_endpoint = bing_search_endpoint
 
     def search(self, q: str, overrides: dict) -> str:
         use_semantic_captions = True if overrides.get("semantic_captions") else False
@@ -42,7 +52,12 @@ class ReadDecomposeAsk(Approach):
             self.results = [doc[self.sourcepage_field] + ":" + nonewlines(" . ".join([c.text for c in doc['@search.captions'] ])) for doc in r]
         else:
             self.results = [doc[self.sourcepage_field] + ":" + nonewlines(doc[self.content_field][:500]) for doc in r]
-        return "\n".join(self.results)
+
+        # Add Bing Search
+        search_result = self.get_bing_search_result(q, top)
+        self.results = self.results + search_result
+        result = json.dumps(self.results, ensure_ascii=False)
+        return result
 
     def lookup(self, q: str, overrides: dict) -> str:
         exclude_category = overrides.get("exclude_category") or None
@@ -62,11 +77,15 @@ class ReadDecomposeAsk(Approach):
             r = self.search_client.search(q, filter=filter, top=1, include_total_count=True)
             
         answers = r.get_answers()
+        result = ''
         if answers and len(answers) > 0:
-            return answers[0].text
+            result =  answers[0].text
         if r.get_count() > 0:
-            return "\n".join(d['content'] for d in r)
-        return None        
+            result =  "\n".join(d['content'] for d in r)
+        
+        search_result = self.lookup_bing_result(q,1)
+        result = result + search_result
+        return result        
 
     def run(self, q: str, overrides: dict) -> any:
         # Not great to keep this as instance state, won't work with interleaving (e.g. if using async), but keeps the example simple
@@ -74,154 +93,353 @@ class ReadDecomposeAsk(Approach):
 
         # Use to capture thought process during iterations
         cb_handler = HtmlCallbackHandler()
-        cb_manager = CallbackManager(handlers=[cb_handler])
+        # cb_manager = CallbackManager(handlers=[cb_handler])
 
-        llm = AzureOpenAI(deployment_name=self.openai_deployment, temperature=overrides.get("temperature") or 0.3, openai_api_key=openai.api_key)
+        # llm = AzureOpenAI(deployment_name=self.openai_deployment, temperature=overrides.get("temperature") or 0.3, openai_api_key=openai.api_key)
         
-        # llm = AzureChatOpenAI(
-        #     openai_api_base=self.azure_openai_base,
-        #     openai_api_version="2023-03-15-preview",
-        #     deployment_name=self.openai_deployment,
-        #     openai_api_key=self.azure_openai_key,
-        #     openai_api_type = "azure"
-        # )
+        llm = AzureChatOpenAI(
+            openai_api_base=self.azure_openai_base,
+            openai_api_version="2023-03-15-preview",
+            deployment_name="gpt-4",
+            openai_api_key=self.azure_openai_key,
+            openai_api_type = "azure",
+            temperature=0.0
+        )
         
         tools = [
-            Tool(name="Search", description="Search in KB", func=lambda q: self.search(q, overrides)),
-            Tool(name="Lookup", description="Lookup in KB", func=lambda q: self.lookup(q,overrides))
+            Tool(name="Search", description="Search in document store", func=lambda q: self.search(q, overrides)),
+            Tool(name="Lookup", description="Lookup in document store", func=lambda q: self.lookup(q,overrides))
         ]
 
         # Like results above, not great to keep this as a global, will interfere with interleaving
         global prompt
-        prompt_prefix = overrides.get("prompt_template")
-        prompt = PromptTemplate.from_examples(
-            EXAMPLES, SUFFIX, ["input", "agent_scratchpad"], prompt_prefix + "\n\n" + PREFIX if prompt_prefix else PREFIX)
+        prompt = CustomPromptTemplate(
+            template=TEMPLATES,
+            tools=tools,
+            # This omits the `agent_scratchpad`, `tools`, and `tool_names` variables because those are generated dynamically
+            # This includes the `intermediate_steps` variable because that is needed
+            input_variables=["input", "intermediate_steps"]
+        )
+        llm_chain = LLMChain(llm=llm, prompt=prompt)
+        tool_names = [tool.name for tool in tools]
+        output_parser = CustomOutputParser()
+        agent = LLMSingleActionAgent(
+            llm_chain=llm_chain, 
+            output_parser=output_parser,
+            stop=["\nObservation:"], 
+            allowed_tools=tool_names
+        )
+        agent_executor = AgentExecutor.from_agent_and_tools(agent=agent, tools=tools, verbose=True)
+        result = agent_executor.run(q)
 
-        agent = ReAct.from_llm_and_tools(llm, tools)
-        chain = AgentExecutor.from_agent_and_tools(agent, tools, verbose=True, callback_manager=cb_manager)
-        result = chain.run(q)
+        # agent = ReAct.from_llm_and_tools(llm, tools)
+        # chain = AgentExecutor.from_agent_and_tools(agent, tools, verbose=True, callbacks=[cb_handler])
+        # result = chain.run(q)
 
         # Fix up references to they look like what the frontend expects ([] instead of ()), need a better citation format since parentheses are so common
-        result = result.replace("(", "[").replace(")", "]")
+        # result = result.replace("(", "[").replace(")", "]")
 
         return {"data_points": self.results or [], "answer": result, "thoughts": cb_handler.get_and_reset_log()}
     
-class ReAct(ReActDocstoreAgent):
-    @classmethod
-    def create_prompt(cls, tools: List[Tool]) -> BasePromptTemplate:
-        return prompt
+    def get_bing_search_result(self, question, top):
+        print("-------------------------searching: " + question + "-------------------------")
+        mkt = 'zh-CN'
+        params = { 'q': question, 'mkt': mkt , 'answerCount': top}
+        headers = { 'Ocp-Apim-Subscription-Key': self.bing_search_subscriptin_key }
+        r = requests.get(self.bing_search_endpoint, headers=headers, params=params)
+        json_response = json.loads(r.text)
+        # print(json_response)
+        result = [page['name'] + ": " + nonewlines(page['snippet']) + " <" + page['url'] + ">" for page in list(json_response['webPages']['value'])[:top]]   
+        return result
     
-# Modified version of langchain's ReAct prompt that includes instructions and examples for how to cite information sources
-EXAMPLES = [
-    """Question: What is the elevation range for the area that the eastern sector of the
+    def lookup_bing_result(self, question, top=1):
+        print("-------------------------lookup: " + question + "-------------------------")
+        mkt = 'zh-CN'
+        params = { 'q': question, 'mkt': mkt , 'answerCount': top}
+        headers = { 'Ocp-Apim-Subscription-Key': self.bing_search_subscriptin_key }
+        r = requests.get(self.bing_search_endpoint, headers=headers, params=params)
+        json_response = json.loads(r.text)
+        # print(json_response)
+        url = list(json_response['webPages']['value'])[0]['url']
+        r = requests.get(url)
+        #Remove html tags using regex
+        clean = re.compile('<.*?>')
+        text = re.sub(clean, '', r.text)
+        print("text length: " + str(len(text)))
+        num_of_tokens = num_tokens_from_messages([text])
+        if(num_of_tokens > 4000):
+            #Split text into 4000 tokens and summarize each part
+            num_of_parts = math.ceil(num_of_tokens / 4000)
+            print("num_of_parts: " + str(num_of_parts))
+            part_length = math.ceil(len(text) / num_of_parts)
+            print("part_length: " + str(part_length))
+            parts = [text[i:i+part_length] for i in range(0, len(text), part_length)]
+            
+            #Summarize each part
+            summaries = []
+            for part in parts:
+                summaries.append(self.summarize(part))
+
+            #Combine summaries
+            summary = ""
+            for s in summaries:
+                summary += s
+            return summary
+        return text
+
+    def summarize(self, text):
+        summarize_prompt = """
+        [SUMMARIZATION RULES]
+            DONT WASTE WORDS
+            USE SHORT, CLEAR, COMPLETE SENTENCES.
+            DO NOT USE BULLET POINTS OR DASHES.
+            USE ACTIVE VOICE.
+            MAXIMIZE DETAIL, MEANING
+            FOCUS ON THE CONTENT
+
+            [BANNED PHRASES]
+            This article
+            This document
+            This page
+            This material
+            [END LIST]
+
+            Summarize:
+            Hello how are you?
+            +++++
+            Hello
+
+            Summarize this
+            {{$input}}
+            +++++"""
+        message = [{
+            "role": "user",
+            "content": summarize_prompt.format(input=text)
+        }]
+        completion = openai.ChatCompletion.create(
+            engine=self.openai_deployment,
+            messages=message,
+            temprature=0.0
+        )
+        wrap_upped_answer = completion['choices'][0]['message']['content']
+        return wrap_upped_answer
+
+def num_tokens_from_messages(messages, model="gpt-4"):
+    """Returns the number of tokens used by a list of messages."""
+    print("Counting tokens..." + messages)
+    tokenizer = tiktoken.get_encoding("cl100k_base")
+    return len(tokenizer.encode(messages))
+
+class CustomOutputParser(AgentOutputParser):
+    
+    def parse(self, llm_output: str) -> Union[AgentAction, AgentFinish]:
+        # Check if agent should finish
+        if "Final Answer" in llm_output:
+            return AgentFinish(
+                # Return values is generally always a dictionary with a single `output` key
+                # It is not recommended to try anything else at the moment :)
+                return_values={"output": llm_output.split("Final Answer:")[-1].strip()},
+                log=llm_output,
+            )
+        # Parse out the action and action input
+        regex = r"Action\s*\d*\s*:(.*?)\nAction\s*\d*\s*Input\s*\d*\s*:[\s]*(.*)"
+        match = re.search(regex, llm_output, re.DOTALL)
+        if not match:
+            # raise ValueError(f"Could not parse LLM output: `{llm_output}`")
+            return AgentFinish(
+                # Return values is generally always a dictionary with a single `output` key
+                # It is not recommended to try anything else at the moment :)
+                return_values={"output": llm_output},
+                log=llm_output,
+            )
+        action = match.group(1).strip()
+        action_input = match.group(2)
+        # Return the action and action input
+        return AgentAction(tool=action, tool_input=action_input.strip(" ").strip('"'), log=llm_output)
+    
+# Set up a prompt template
+class CustomPromptTemplate(BaseChatPromptTemplate):
+    # The template to use
+    template: str
+    # The list of tools available
+    tools: List[Tool]
+    
+    def format_messages(self, **kwargs) -> str:
+        # Get the intermediate steps (AgentAction, Observation tuples)
+        # Format them in a particular way
+        intermediate_steps = kwargs.pop("intermediate_steps")
+        thoughts = ""
+        for action, observation in intermediate_steps:
+            thoughts += action.log
+            thoughts += f"\nObservation: {observation}\nThought: "
+        # Set the agent_scratchpad variable to that value
+        kwargs["agent_scratchpad"] = thoughts
+        # Create a tools variable from the list of tools provided
+        kwargs["tools"] = "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools])
+        # Create a list of tool names for the tools provided
+        kwargs["tool_names"] = ", ".join([tool.name for tool in self.tools])
+        formatted = self.template.format(**kwargs)
+        return [HumanMessage(content=formatted)]
+       
+TEMPLATES = """
+Answer questions as shown in the following examples, by splitting the question into individual search or lookup actions to find facts until you can answer the question.
+Observations are prefixed by their source name in square brackets, source names MUST be included with the actions in the answers."
+Only answer the questions using the information from observations, do not speculate. Translate the question into actions and observations, then answer the question using the observations.
+Observations MUST be in the format of the example observations. 
+Translate the answer to Chinese
+
+You have access to the following tools:{tools}
+To use a tool, please use the following format:
+
+```
+Thought: Do I need to use a tool? Yes
+Action: the action to take, should be one of [{tool_names}]
+Action Input: the input to the action
+Observation: the result of the action
+```
+When you have a response to say to the Human, or if you do not need to use a tool, you MUST use the format:
+```
+Thought: Do I need to use a tool? No
+Final Answer: [your response here]
+```
+
+ALWAYS use the following format:
+
+Question: the input question you must answer
+Thought: you should always think about what to do
+Action:
+Action Input:
+Observation: the result of the action
+... (this Thought/Action/Action Input/Observation can repeat N times)
+Thought: I now know the final answer
+Final Answer: the final answer to the original input question
+
+Examples:
+Question: What is the elevation range for the area that the eastern sector of the
 Colorado orogeny extends into?
-Thought 1: I need to search Colorado orogeny, find the area that the eastern sector
+Thought: I need to search Colorado orogeny, find the area that the eastern sector
 of the Colorado orogeny extends into, then find the elevation range of the
 area.
-Action 1: Search[Colorado orogeny]
-Observation 1: [info1.pdf] The Colorado orogeny was an episode of mountain building (an orogeny) in
+Action: Search
+Action Input: Colorado orogeny
+Observation: [info1.pdf](http://www.example1.com/info1.pdf) The Colorado orogeny was an episode of mountain building (an orogeny) in
 Colorado and surrounding areas.
-Thought 2: It does not mention the eastern sector. So I need to look up eastern
+Thought: It does not mention the eastern sector. So I need to look up eastern
 sector.
-Action 2: Lookup[eastern sector]
-Observation 2: [info2.txt] (Result 1 / 1) The eastern sector extends into the High Plains and is called
+Action: Lookup
+Action Input: eastern sector
+Observation: [info2.txt](http://www.example1.com/info2.pdf) The eastern sector extends into the High Plains and is called
 the Central Plains orogeny.
-Thought 3: The eastern sector of Colorado orogeny extends into the High Plains. So I
+Thought: The eastern sector of Colorado orogeny extends into the High Plains. So I
 need to search High Plains and find its elevation range.
-Action 3: Search[High Plains]
-Observation 3: [some_file.pdf] High Plains refers to one of two distinct land regions
-Thought 4: I need to instead search High Plains (United States).
-Action 4: Search[High Plains (United States)]
-Observation 4: [filea.pdf] The High Plains are a subregion of the Great Plains. [another-ref.docx] From east to west, the
+Action: Search
+Action Input: High Plains
+Observation: [some_file.pdf](http://www.exampl1.com/some_file.pdf) High Plains refers to one of two distinct land regions
+Thought: I need to instead search High Plains (United States).
+Action: Search
+Action Input: High Plains (United States)
+Observation: [filea.pdf](http://www.example1.com/filea.pdf) The High Plains are a subregion of the Great Plains. [another-ref.docx](http://www.example1.com/another-ref.docx) From east to west, the
 High Plains rise in elevation from around 1,800 to 7,000 ft (550 to 2,130
 m).
-Thought 5: High Plains rise in elevation from around 1,800 to 7,000 ft, so the answer
+Thought: High Plains rise in elevation from around 1,800 to 7,000 ft, so the answer
 is 1,800 to 7,000 ft.
-Action 5: Finish[1,800 to 7,000 ft (filea.pdf) ]""",
-    """Question: Musician and satirist Allie Goertz wrote a song about the "The Simpsons"
+Final Answer: 1,800 to 7,000 ft [filea.pdf](http://www.example1.com/filea.pdf)
+
+Question: Musician and satirist Allie Goertz wrote a song about the "The Simpsons"
 character Milhouse, who Matt Groening named after who?
-Thought 1: The question simplifies to "The Simpsons" character Milhouse is named after
+Thought: The question simplifies to "The Simpsons" character Milhouse is named after
 who. I only need to search Milhouse and find who it is named after.
-Action 1: Search[Milhouse]
-Observation 1: [info7.pdf] Milhouse Mussolini Van Houten is a recurring character in the Fox animated
+Action: Search
+Action Input: Milhouse
+Observation: [info7.pdf](http://www.example2.com/info7.pdf) Milhouse Mussolini Van Houten is a recurring character in the Fox animated
 television series The Simpsons voiced by Pamela Hayden and created by Matt
 Groening.
-Thought 2: The paragraph does not tell who Milhouse is named after, maybe I can look up
+Thought: The paragraph does not tell who Milhouse is named after, maybe I can look up
 "named after".
-Action 2: Lookup[named after]
-Observation 2: [historyref2.txt] (Result 1 / 1) Milhouse was named after U.S. president Richard Nixon, whose
+Action: Lookup
+Action Input: named after
+Observation: [historyref2.txt](http://www.example2.com/historyref2.txt) Milhouse was named after U.S. president Richard Nixon, whose
 middle name was Milhous.
-Thought 3: Milhouse was named after U.S. president Richard Nixon, so the answer is
+Thought: Milhouse was named after U.S. president Richard Nixon, so the answer is
 Richard Nixon.
-Action 3: Finish[Richard Nixon (historyref2.txt) ]""",
-    """Question: Which documentary is about Finnish rock groups, Adam Clayton Powell or The
+Final Answer: Richard Nixon [historyref2.txt](http://www.example2.com/historyref2.txt)
+
+Question: Which documentary is about Finnish rock groups, Adam Clayton Powell or The
 Saimaa Gesture?
-Thought 1: I need to search Adam Clayton Powell and The Saimaa Gesture, and find which
+Thought: I need to search Adam Clayton Powell and The Saimaa Gesture, and find which
 documentary is about Finnish rock groups.
-Action 1: Search[Adam Clayton Powell]
-Observation 1: [info9.pdf] Could not find [Adam Clayton Powell]. Similar: ['Adam Clayton Powell
+Action: Search
+Action Input: Adam Clayton Powell
+Observation: [info9.pdf](http://www.example3.com/info9.pdf) Could not find [Adam Clayton Powell]. Similar: ['Adam Clayton Powell
 III', 'Seventh Avenue (Manhattan)', 'Adam Clayton Powell Jr. State Office
 Building', 'Isabel Washington Powell', 'Adam Powell', vAdam Clayton Powell
 (film)', 'Giancarlo Esposito'].
-Thought 2: To find the documentary, I can search Adam Clayton Powell (film).
-Action 2: Search[Adam Clayton Powell (film)]
-Observation 2: [data123.txt] Adam Clayton Powell is a 1989 American documentary film directed by
+Thought: To find the documentary, I can search Adam Clayton Powell (film).
+Action: Search
+Action Input: Adam Clayton Powell (film)
+Observation: [data123.txt](http://www.example3.com/data123.txt) Adam Clayton Powell is a 1989 American documentary film directed by
 Richard Kilberg. The film is about the rise and fall of influential
 African-American politician Adam Clayton Powell Jr.[3][4] It was later aired
 as part of the PBS series The American Experience.
-Thought 3: Adam Clayton Powell (film) is a documentary about an African-American
+Thought: Adam Clayton Powell (film) is a documentary about an African-American
 politician, not Finnish rock groups. So the documentary about Finnish rock
 groups must instead be The Saimaa Gesture.
-Action 3: Finish[The Saimaa Gesture (data123.txt) ]""",
-    """Question: What profession does Nicholas Ray and Elia Kazan have in common?
+Final Answer: The Saimaa Gesture [data123.txt](http://www.example3.com/data123.txt)
+
+Question: What profession does Nicholas Ray and Elia Kazan have in common?
 Thought 1: I need to search Nicholas Ray and Elia Kazan, find their professions, then
 find the profession they have in common.
-Action 1: Search[Nicholas Ray]
-Observation 1: [files-987.png] Nicholas Ray (born Raymond Nicholas Kienzle Jr., August 7, 1911 - June 16,
+Action: Search
+Action Input: Nicholas Ray
+Observation: [files-987.png](http://www.example4.com/files-987.png) Nicholas Ray (born Raymond Nicholas Kienzle Jr., August 7, 1911 - June 16,
 1979) was an American film director, screenwriter, and actor best known for
 the 1955 film Rebel Without a Cause.
-Thought 2: Professions of Nicholas Ray are director, screenwriter, and actor. I need
+Thought: Professions of Nicholas Ray are director, screenwriter, and actor. I need
 to search Elia Kazan next and find his professions.
-Action 2: Search[Elia Kazan]
-Observation 2: [files-654.txt] Elia Kazan was an American film and theatre director, producer, screenwriter
+Action: Search
+Action Input: Elia Kazan
+Observation: [files-654.txt](http://www.example4.com/files-654.txt) Elia Kazan was an American film and theatre director, producer, screenwriter
 and actor.
-Thought 3: Professions of Elia Kazan are director, producer, screenwriter, and actor.
+Thought: Professions of Elia Kazan are director, producer, screenwriter, and actor.
 So profession Nicholas Ray and Elia Kazan have in common is director,
 screenwriter, and actor.
-Action 3: Finish[director, screenwriter, actor (files-987.png)(files-654.txt) ]""",
-    """Question: Which magazine was started first Arthur's Magazine or First for Women?
-Thought 1: I need to search Arthur's Magazine and First for Women, and find which was
+Final Answer: director, screenwriter, actor [files-987.png](http://www.example4.com/files-987.png)[files-654.txt](http://www.example4.com/files-654.txt)
+
+Question: Which magazine was started first Arthur's Magazine or First for Women?
+Thought: I need to search Arthur's Magazine and First for Women, and find which was
 started first.
-Action 1: Search[Arthur's Magazine]
-Observation 1: [magazines-1850.pdf] Arthur's Magazine (1844-1846) was an American literary periodical published
+Action: Search
+Action Input: Arthur's Magazine
+Observation: [magazines-1850.pdf](http://www.example5.com/magazines-1850.pdf) Arthur's Magazine (1844-1846) was an American literary periodical published
 in Philadelphia in the 19th century.
-Thought 2: Arthur's Magazine was started in 1844. I need to search First for Women
+Thought: Arthur's Magazine was started in 1844. I need to search First for Women
 next.
-Action 2: Search[First for Women]
-Observation 2: [magazines-1900.pdf] First for Women is a woman's magazine published by Bauer Media Group in the
+Action: Search
+Action Input: First for Women
+Observation 2: [magazines-1900.pdf](http://www.example5.com/magazines-1900.pdf) First for Women is a woman's magazine published by Bauer Media Group in the
 USA.[1] The magazine was started in 1989.
-Thought 3: First for Women was started in 1989. 1844 (Arthur's Magazine) < 1989 (First
+Thought: First for Women was started in 1989. 1844 (Arthur's Magazine) < 1989 (First
 for Women), so Arthur's Magazine was started first.
-Action 3: Finish[Arthur's Magazine (magazines-1850.pdf)(magazines-1900.pdf) ]""",
-    """Question: Were Pavel Urysohn and Leonid Levin known for the same type of work?
-Thought 1: I need to search Pavel Urysohn and Leonid Levin, find their types of work,
+Final Answer: Arthur's Magazine [magazines-1850.pdf](http://www.example5.com/magazines-1850.pdf)[magazines-1900.pdf](http://www.example5.com/magazines-1900.pdf)
+
+Question: Were Pavel Urysohn and Leonid Levin known for the same type of work?
+Thought: I need to search Pavel Urysohn and Leonid Levin, find their types of work,
 then find if they are the same.
-Action 1: Search[Pavel Urysohn]
-Observation 1: [info4444.pdf] Pavel Samuilovich Urysohn (February 3, 1898 - August 17, 1924) was a Soviet
+Action: Search
+Action Input: Pavel Urysohn
+Observation: [info4444.pdf](http://www.example6.com/info4444.pdf) Pavel Samuilovich Urysohn (February 3, 1898 - August 17, 1924) was a Soviet
 mathematician who is best known for his contributions in dimension theory.
-Thought 2: Pavel Urysohn is a mathematician. I need to search Leonid Levin next and
+Thought: Pavel Urysohn is a mathematician. I need to search Leonid Levin next and
 find its type of work.
-Action 2: Search[Leonid Levin]
-Observation 2: [datapoints_aaa.txt] Leonid Anatolievich Levin is a Soviet-American mathematician and computer
+Action: Search
+Action Input: Leonid Levin
+Observation: [datapoints_aaa.txt](http://www.example6.com/datapoints_aaa.txt) Leonid Anatolievich Levin is a Soviet-American mathematician and computer
 scientist.
-Thought 3: Leonid Levin is a mathematician and computer scientist. So Pavel Urysohn
+Thought: Leonid Levin is a mathematician and computer scientist. So Pavel Urysohn
 and Leonid Levin have the same type of work.
-Action 3: Finish[yes (info4444.pdf)(datapoints_aaa.txt) ]""",
-]
-SUFFIX = """\nQuestion: {input}
-{agent_scratchpad}"""
-PREFIX = "Answer questions as shown in the following examples, by splitting the question into individual search or lookup actions to find facts until you can answer the question. " \
-"Observations are prefixed by their source name in square brackets, source names MUST be included with the actions in the answers." \
-"Only answer the questions using the information from observations, do not speculate. Translate the question into actions and observations, then answer the question using the observations." \
-"Observations can be in any format, but must be in the format of the example observations. " \
-"Translate the answer to Chinese"    
+Final Answer: yes [info4444.pdf](http://www.example6.com/info4444.pdf)[datapoints_aaa.txt](http://www.example6.com/datapoints_aaa.txt)
+
+
+Question: {input}
+{agent_scratchpad}
+"""

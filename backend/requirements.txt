@@ -1,18 +1,14 @@
 Flask==2.2.2
-langchain
-openai
+langchain==0.0.160
+openai==0.27.6
 azure-search-documents==11.4.0b3
 azure-storage-blob==12.14.1
 msrestazure
-<<<<<<< HEAD
-azure.identity
-azure.core
-=======
 azure-identity==1.13.0b3
->>>>>>> 88c15e77a082a255723f12819806133736f4ce05
 requests
 azure-cognitiveservices-speech==1.24.0
 python-dotenv
 azure-ai-formrecognizer==3.2.1
 pypdf==3.7.1
 semantic-kernel==0.2.2.dev0
+tiktoken

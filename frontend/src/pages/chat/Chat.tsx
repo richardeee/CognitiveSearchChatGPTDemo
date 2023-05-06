@@ -16,9 +16,9 @@ import { ClearChatButton } from "../../components/ClearChatButton";
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
     const [promptTemplate, setPromptTemplate] = useState<string>("");
-    const [retrieveCount, setRetrieveCount] = useState<number>(3);
+    const [retrieveCount, setRetrieveCount] = useState<number>(6);
     const [useSemanticRanker, setUseSemanticRanker] = useState<boolean>(false);
-    const [useSemanticCaptions, setUseSemanticCaptions] = useState<boolean>(false);
+    const [useSemanticCaptions, setUseSemanticCaptions] = useState<boolean>(true);
     const [excludeCategory, setExcludeCategory] = useState<string>("");
     const [useSuggestFollowupQuestions, setUseSuggestFollowupQuestions] = useState<boolean>(true);
 

@@ -9,7 +9,10 @@ import json
 # top documents from search, then constructs a prompt with them, and then uses OpenAI to generate an completion 
 # (answer) with that prompt.
 class ChatReadRetrieveReadApproach(Approach):
-    prompt_prefix = """你是一名系统助理，你帮助公司员工解决他们的问题，回答要简短。
+    system_prompt = """
+    你是一名系统助理，你帮助公司员工解决他们的问题，回答要简短。
+    """
+    prompt_prefix = """
     仅回答以下来源列表中列出的事实。如果下面没有足够的信息，请说您不知道。不要生成不使用以下来源的答案。不要使用年代久远的来源信息。如果向用户提出澄清问题会有所帮助，请提出问题。
     每个源都有一个名称，后跟冒号和实际信息，始终包括您在响应中使用的每个事实的源名称。使用方形制动器来引用源。对于表格形式的数据，请以HTML表格形式输出，不要使用Markdown表格格式。
     例如:
@@ -87,7 +90,7 @@ class ChatReadRetrieveReadApproach(Approach):
             r = self.search_client.search(q, 
                                           filter=filter,
                                           query_type=QueryType.SEMANTIC, 
-                                          query_language="en_us", 
+                                          query_language="en-US", 
                                           query_speller="lexicon", 
                                           semantic_configuration_name="default", 
                                           top=top, 
@@ -115,7 +118,7 @@ class ChatReadRetrieveReadApproach(Approach):
             search_result = self.get_bing_search_result(question, top)
             bing_search_result = "\n".join(search_result)
             content = bing_search_result
-            supporting_facts = bing_search_result
+            supporting_facts = search_result
         
         # STEP 3: Generate a response with the retrieved documents as prompt
         follow_up_questions_prompt = self.follow_up_questions_prompt_content if overrides.get("suggest_followup_questions") else ""
@@ -130,14 +133,6 @@ class ChatReadRetrieveReadApproach(Approach):
             prompt = prompt_override.format(sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
 
         # STEP 4: Generate a contextual and content specific answer using the search results and chat history
-        # print(prompt)
-        # completion = openai.Completion.create(
-        #     engine=self.chatgpt_deployment, 
-        #     prompt=prompt, 
-        #     temperature=overrides.get("temperature") or 0.0, 
-        #     max_tokens=2000, 
-        #     n=1, 
-        #     stop=["<|im_end|>", "<|im_start|>"])
         system_message = [{
             "role": "system",
             "content": f"{prompt}"
@@ -145,7 +140,6 @@ class ChatReadRetrieveReadApproach(Approach):
             "role": "user",
             "content": f"{question}"
         },]
-        # chat_message = system_message.append(self.get_chat_history_as_text(history, include_last_turn=False))
         chat_histroy_message = self.get_chat_history_as_text(history, include_last_turn=False)
         user_question_message = {
             "role": "user",
