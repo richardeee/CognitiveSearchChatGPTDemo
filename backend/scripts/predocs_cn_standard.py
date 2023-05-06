@@ -55,10 +55,10 @@ args = parser.parse_args()
 #         print("Error: Azure Form Recognizer service is not provided. Please provide formrecognizerservice or use --localpdfparser for local pypdf parser.")
 #         exit(1)
 #     formrecognizer_creds = default_creds if args.formrecognizerkey == None else AzureKeyCredential(args.formrecognizerkey)
-AZURE_CLIENT_ID=
-AZURE_CLIENT_SECRET=
-AZURE_SUBSCRIPTION_ID=
-AZURE_TENANT_ID=
+AZURE_CLIENT_ID="d9ce7a92-80fd-4e2f-a932-6c8ca33c541e"
+AZURE_CLIENT_SECRET="93MB2lO4_4~3DxD2DC.yZ~mekpTNJ6Q1t4"
+AZURE_SUBSCRIPTION_ID="9b402866-6475-4288-aefc-e03270d7093a"
+AZURE_TENANT_ID="3ab63414-b514-4d8f-b891-728fe2a334e9"
 
 credentials = ClientSecretCredential(
             client_id=AZURE_CLIENT_ID,

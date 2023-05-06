@@ -5,7 +5,7 @@ from azure.search.documents.models import QueryType
 from langchain.chat_models  import AzureChatOpenAI
 from langchain.llms.openai import AzureOpenAI
 from langchain.prompts import PromptTemplate, BasePromptTemplate
-from langchain.callbacks.base import CallbackManager
+# from langchain.callbacks.base import CallbackManager
 from langchain.agents import Tool, AgentExecutor
 from langchain.agents.react.base import ReActDocstoreAgent
 from langchainadapters import HtmlCallbackHandler

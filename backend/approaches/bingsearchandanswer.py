@@ -3,7 +3,7 @@ from approaches.approach import Approach
 from azure.search.documents import SearchClient
 from langchain.chat_models  import AzureChatOpenAI 
 from langchain.prompts import PromptTemplate, BasePromptTemplate
-from langchain.callbacks.base import CallbackManager
+# from langchain.callbacks.base import CallbackManager
 from langchain.agents import Tool, AgentExecutor
 from langchain.agents.react.base import ReActDocstoreAgent
 from langchainadapters import HtmlCallbackHandler
