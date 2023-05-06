@@ -9,7 +9,7 @@ import json
 # top documents from search, then constructs a prompt with them, and then uses OpenAI to generate an completion 
 # (answer) with that prompt.
 class ChatReadRetrieveReadApproach(Approach):
-    prompt_prefix = """<|im_start|>系统助理帮助公司员工解决他们的问题，回答要简短。
+    prompt_prefix = """你是一名系统助理，你帮助公司员工解决他们的问题，回答要简短。
     仅回答以下来源列表中列出的事实。如果下面没有足够的信息，请说您不知道。不要生成不使用以下来源的答案。不要使用年代久远的来源信息。如果向用户提出澄清问题会有所帮助，请提出问题。
     每个源都有一个名称，后跟冒号和实际信息，始终包括您在响应中使用的每个事实的源名称。使用方形制动器来引用源。对于表格形式的数据，请以HTML表格形式输出，不要使用Markdown表格格式。
     例如:
@@ -19,13 +19,10 @@ class ChatReadRetrieveReadApproach(Approach):
     不要合并来源，而是单独列出每个来源，例如 [info1.txt][info2.pdf].
     不要使用引用，而是始终将来源路径放在()中，例如(http://www.somedomain1.com/info1.txt)(http://www.somedomain2.com/info2.pdf).
     
-
     {follow_up_questions_prompt}
     {injected_prompt}
     来源:
     {sources}
-    <|im_end|>
-    {chat_history}
     """
 
     follow_up_questions_prompt_content = """生成三个非常简短的后续问题。
@@ -74,7 +71,17 @@ class ChatReadRetrieveReadApproach(Approach):
             n=1, 
             stop=["\n"])
         q = completion.choices[0].text
+        # prompt = self.query_prompt_template.format(chat_history=self.get_chat_history_as_text(history, include_last_turn=False),question = history[-1]["user"])
 
+        # response = openai.ChatCompletion.create(
+        #     engine="gpt-35-turbo", # The deployment name you chose when you deployed the ChatGPT or GPT-4 model.
+        #     messages=[
+        #         {"role": "system", "content": prompt},
+        #         {"role": "user", "content": question}
+        #     ]
+        # )
+        # q = response['choices'][0]['message']['content']
+        print("Key word search query: " + q)
         # STEP 2: Retrieve relevant documents from the search index with the GPT optimized query
         if overrides.get("semantic_ranker"):
             r = self.search_client.search(q, 
@@ -92,13 +99,13 @@ class ChatReadRetrieveReadApproach(Approach):
         if use_semantic_captions:
             results = [doc[self.sourcepage_field] + ": " + nonewlines(" . ".join([c.text for c in doc['@search.captions']])) for doc in r]
         else:
-            results = [doc[self.sourcepage_field] + ": " + nonewlines(doc[self.content_field]) + " <" + doc[self.sourcepage_path_field] + ">" for doc in r if doc['@search.score'] > 7.0]
+            results = [doc[self.sourcepage_field] + ": " + nonewlines(doc[self.content_field]) + " <" + doc[self.sourcepage_path_field] + ">" for doc in r if doc['@search.score'] > 10.0]
         
-        for r in results:
-            print(r)
+        # for r in results:
+        #     print(r)
             
         question=history[-1]["user"]
-        
+        print("question: " + question)
         if len(results) > 0: 
             search_result = []         
             cognitive_search_result = "\n".join(results)
@@ -116,33 +123,65 @@ class ChatReadRetrieveReadApproach(Approach):
         # Allow client to replace the entire prompt, or to inject into the exiting prompt using >>>
         prompt_override = overrides.get("prompt_template")
         if prompt_override is None:
-            prompt = self.prompt_prefix.format(injected_prompt="", sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
+            prompt = self.prompt_prefix.format(injected_prompt="", sources=content, follow_up_questions_prompt=follow_up_questions_prompt)
         elif prompt_override.startswith(">>>"):
             prompt = self.prompt_prefix.format(injected_prompt=prompt_override[3:] + "\n", sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
         else:
             prompt = prompt_override.format(sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
 
         # STEP 4: Generate a contextual and content specific answer using the search results and chat history
-        print(prompt)
-        completion = openai.Completion.create(
-            engine=self.chatgpt_deployment, 
-            prompt=prompt, 
-            temperature=overrides.get("temperature") or 0.0, 
-            max_tokens=2000, 
-            n=1, 
-            stop=["<|im_end|>", "<|im_start|>"])
-
-        wrap_upped_answer = completion.choices[0].text
+        # print(prompt)
+        # completion = openai.Completion.create(
+        #     engine=self.chatgpt_deployment, 
+        #     prompt=prompt, 
+        #     temperature=overrides.get("temperature") or 0.0, 
+        #     max_tokens=2000, 
+        #     n=1, 
+        #     stop=["<|im_end|>", "<|im_start|>"])
+        system_message = [{
+            "role": "system",
+            "content": f"{prompt}"
+        },{
+            "role": "user",
+            "content": f"{question}"
+        },]
+        # chat_message = system_message.append(self.get_chat_history_as_text(history, include_last_turn=False))
+        chat_histroy_message = self.get_chat_history_as_text(history, include_last_turn=False)
+        user_question_message = {
+            "role": "user",
+            "content": f"{question}"
+        }
+        if len(chat_histroy_message) > 0:
+            system_message = system_message + chat_histroy_message
+            system_message.append(user_question_message)
+        else:
+            system_message.append(user_question_message)
+        
+        print(system_message)
+        completion = openai.ChatCompletion.create(
+            engine="gpt-4",
+            messages=system_message
+        )
+        wrap_upped_answer = completion['choices'][0]['message']['content']
         print(wrap_upped_answer)
         return {"data_points": supporting_facts, "answer": wrap_upped_answer, "thoughts": f"Searched for:<br>{q}<br><br>Prompt:<br>" + prompt.replace('\n', '<br>')}
     
-    def get_chat_history_as_text(self, history, include_last_turn=True, approx_max_tokens=1000) -> str:
+    def get_chat_history_as_text(self, history, include_last_turn=True, approx_max_tokens=1000):
         history_text = ""
+        history_message = []
         for h in reversed(history if include_last_turn else history[:-1]):
             history_text = """<|im_start|>user""" +"\n" + h["user"] + "\n" + """<|im_end|>""" + "\n" + """<|im_start|>assistant""" + "\n" + (h.get("bot") + """<|im_end|>""" if h.get("bot") else "") + "\n" + history_text
+            history_message.append({
+                "role": "user",
+                "content": f"{h['user']}"
+            })
+            history_message.append({
+                "role": "assistant",
+                "content": f"{h.get('bot')}"
+            })
             if len(history_text) > approx_max_tokens*4:
                 break    
-        return history_text
+        return history_message
     
     def get_bing_search_result(self, question, top):
         mkt = 'zh-CN'
