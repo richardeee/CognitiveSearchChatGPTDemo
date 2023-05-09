@@ -74,16 +74,7 @@ class ChatReadRetrieveReadApproach(Approach):
             n=1, 
             stop=["\n"])
         q = completion.choices[0].text
-        # prompt = self.query_prompt_template.format(chat_history=self.get_chat_history_as_text(history, include_last_turn=False),question = history[-1]["user"])
 
-        # response = openai.ChatCompletion.create(
-        #     engine="gpt-35-turbo", # The deployment name you chose when you deployed the ChatGPT or GPT-4 model.
-        #     messages=[
-        #         {"role": "system", "content": prompt},
-        #         {"role": "user", "content": question}
-        #     ]
-        # )
-        # q = response['choices'][0]['message']['content']
         print("Key word search query: " + q)
         # STEP 2: Retrieve relevant documents from the search index with the GPT optimized query
         if overrides.get("semantic_ranker"):
@@ -98,7 +89,7 @@ class ChatReadRetrieveReadApproach(Approach):
         else:
             # r = self.search_client.search(q, filter=filter, top=top)
             r = self.search_client.search(question, filter=filter, top=top)
-            
+        print(r)
         if use_semantic_captions:
             results = [doc[self.sourcepage_field] + ": " + nonewlines(" . ".join([c.text for c in doc['@search.captions']])) for doc in r]
         else:
@@ -153,7 +144,7 @@ class ChatReadRetrieveReadApproach(Approach):
         
         print(system_message)
         completion = openai.ChatCompletion.create(
-            engine="gpt-4",
+            engine=self.chatgpt_deployment,
             messages=system_message
         )
         wrap_upped_answer = completion['choices'][0]['message']['content']

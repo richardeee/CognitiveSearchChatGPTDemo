@@ -13,7 +13,7 @@ from azure.search.documents.indexes import SearchIndexClient
 from azure.search.documents.indexes.models import *
 from azure.search.documents import SearchClient
 from azure.ai.formrecognizer import DocumentAnalysisClient
-
+import base64
 MAX_SECTION_LENGTH = 1000
 SENTENCE_SEARCH_LIMIT = 100
 SECTION_OVERLAP = 100
@@ -38,6 +38,8 @@ parser.add_argument("--localpdfparser", action="store_true", help="Use PyPdf loc
 parser.add_argument("--formrecognizerservice", required=False, help="Optional. Name of the Azure Form Recognizer service which will be used to extract text, tables and layout from the documents (must exist already)")
 parser.add_argument("--formrecognizerkey", required=False, help="Optional. Use this Azure Form Recognizer account key instead of the current user identity to login (use az login to set current user for Azure)")
 parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+#Added by Alfred
+parser.add_argument("--folder", required=False, help="Azure Blob contatiner folder")
 args = parser.parse_args()
 
 # Use the current user identity to connect to Azure services unless a key is explicitly set for any of them
@@ -77,11 +79,21 @@ def upload_blobs(filename):
             writer.add_page(pages[i])
             writer.write(f)
             f.seek(0)
-            blob_container.upload_blob(blob_name, f, overwrite=True)
+            if args.folder:
+                remote_file_path = os.path.join(args.folder+'/', blob_name)
+                blob_container.upload_blob(remote_file_path, f, overwrite=True)
+            else:
+                blob_container.upload_blob(blob_name, f, overwrite=True)
     else:
         blob_name = blob_name_from_file_page(filename)
+        if args.folder:
+            remote_file_path = os.path.join(args.folder+'/', blob_name)
         with open(filename,"rb") as data:
-            blob_container.upload_blob(blob_name, data, overwrite=True)
+            if args.folder:
+                remote_file_path = os.path.join(args.folder+'/', blob_name)
+                blob_container.upload_blob(blob_name, data, overwrite=True)
+            else:
+                blob_container.upload_blob(blob_name, data, overwrite=True)
 
 def remove_blobs(filename):
     if args.verbose: print(f"Removing blobs for '{filename or '<all>'}'")
@@ -222,12 +234,17 @@ def split_text(page_map):
 
 def create_sections(filename, page_map):
     for i, (section, pagenum) in enumerate(split_text(page_map)):
+        encoded_id = base64.urlsafe_b64encode(f"{filename}-{i}-section-{i}".encode('utf-8'))
+        encoded_id_str = str(encoded_id.decode('utf-8'))
         yield {
-            "id": re.sub("[^0-9a-zA-Z_-]","_",f"{filename}-{i}"),
+            # "id": re.sub("[^0-9a-zA-Z_-]","_",f"{filename}-{i}"),
+            "id": encoded_id_str,
             "content": section,
             "category": args.category,
             "sourcepage": blob_name_from_file_page(filename, pagenum),
-            "sourcefile": filename
+            "sourcefile": filename,
+            "metadata_storage_name": os.path.basename(filename),
+            "metadata_storage_path": f"https://{args.storageaccount}.blob.core.windows.net/{args.container}/{args.folder}/{os.path.basename(filename)}"
         }
 
 def create_search_index():

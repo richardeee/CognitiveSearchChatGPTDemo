@@ -177,11 +177,13 @@ def askBing():
 def chat():
     ensure_openai_token()
     approach = request.json["approach"]
+    print(request)
     try:
         impl = chat_approaches.get(approach)
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
         r = impl.run(request.json["history"], request.json.get("overrides") or {})
+        print(jsonify(r))
         return jsonify(r)
     except Exception as e:
         logging.exception("Exception in /chat")

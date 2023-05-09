@@ -12,4 +12,3 @@ azure-ai-formrecognizer==3.2.1
 pypdf==3.7.1
 semantic-kernel==0.2.2.dev0
 tiktoken
-aiohttp

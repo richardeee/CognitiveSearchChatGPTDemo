@@ -18,7 +18,7 @@ const Chat = () => {
     const [promptTemplate, setPromptTemplate] = useState<string>("");
     const [retrieveCount, setRetrieveCount] = useState<number>(6);
     const [useSemanticRanker, setUseSemanticRanker] = useState<boolean>(false);
-    const [useSemanticCaptions, setUseSemanticCaptions] = useState<boolean>(true);
+    const [useSemanticCaptions, setUseSemanticCaptions] = useState<boolean>(false);
     const [excludeCategory, setExcludeCategory] = useState<string>("");
     const [useSuggestFollowupQuestions, setUseSuggestFollowupQuestions] = useState<boolean>(true);
 
