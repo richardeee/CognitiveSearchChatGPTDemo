@@ -5,10 +5,8 @@ azure-search-documents==11.4.0b3
 azure-storage-blob==12.14.1
 msrestazure
 azure-identity==1.13.0b3
-requests
 azure-cognitiveservices-speech==1.24.0
 python-dotenv
 azure-ai-formrecognizer==3.2.1
 pypdf==3.7.1
-semantic-kernel==0.2.2.dev0
 tiktoken
