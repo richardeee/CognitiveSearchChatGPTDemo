@@ -108,7 +108,7 @@ class ReadDecomposeAsk(Approach):
         
         tools = [
             Tool(name="Search", description="Search in document store", func=lambda q: self.search(q, overrides)),
-            Tool(name="Lookup", description="Lookup in document store", func=lambda q: self.lookup(q,overrides))
+            # Tool(name="Lookup", description="Lookup in document store", func=lambda q: self.lookup(q,overrides))
         ]
 
         # Like results above, not great to keep this as a global, will interfere with interleaving

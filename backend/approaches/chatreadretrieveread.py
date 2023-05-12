@@ -81,8 +81,8 @@ class ChatReadRetrieveReadApproach(Approach):
             r = self.search_client.search(q, 
                                           filter=filter,
                                           query_type=QueryType.SEMANTIC, 
-                                          query_language="en-US", 
-                                          query_speller="lexicon", 
+                                          query_language="zh-CN", 
+                                        #   query_speller="lexicon", 
                                           semantic_configuration_name="default", 
                                           top=top, 
                                           query_caption="extractive|highlight-false" if use_semantic_captions else None)
@@ -145,7 +145,8 @@ class ChatReadRetrieveReadApproach(Approach):
         print(system_message)
         completion = openai.ChatCompletion.create(
             engine=self.chatgpt_deployment,
-            messages=system_message
+            messages=system_message,
+            temperature=0.0
         )
         wrap_upped_answer = completion['choices'][0]['message']['content']
         print(wrap_upped_answer)
