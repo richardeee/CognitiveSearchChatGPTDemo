@@ -10,3 +10,5 @@ python-dotenv
 azure-ai-formrecognizer==3.2.1
 pypdf==3.7.1
 tiktoken
+llama-index
+nltk

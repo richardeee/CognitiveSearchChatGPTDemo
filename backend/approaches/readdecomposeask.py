@@ -41,8 +41,8 @@ class ReadDecomposeAsk(Approach):
             r = self.search_client.search(q,
                                           filter=filter,
                                           query_type=QueryType.SEMANTIC, 
-                                          query_language="en-US", 
-                                          query_speller="lexicon", 
+                                          query_language="zh-CN", 
+                                        #   query_speller="lexicon", 
                                           semantic_configuration_name="default", 
                                           top = top,
                                           query_caption="extractive|highlight-false" if use_semantic_captions else None)
@@ -54,8 +54,8 @@ class ReadDecomposeAsk(Approach):
             self.results = [doc[self.sourcepage_field] + ":" + nonewlines(doc[self.content_field][:500]) for doc in r]
 
         # Add Bing Search
-        search_result = self.get_bing_search_result(q, top)
-        self.results = self.results + search_result
+        # search_result = self.get_bing_search_result(q, top)
+        # self.results = self.results + search_result
         result = json.dumps(self.results, ensure_ascii=False)
         return result
 

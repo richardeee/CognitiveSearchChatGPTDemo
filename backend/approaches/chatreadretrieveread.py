@@ -14,22 +14,47 @@ class ChatReadRetrieveReadApproach(Approach):
     """
     prompt_prefix = """
     仅回答以下来源列表中列出的事实。如果下面没有足够的信息，请说您不知道。不要生成不使用以下来源的答案。不要使用年代久远的来源信息。如果向用户提出澄清问题会有所帮助，请提出问题。
-    每个源都有一个名称，后跟冒号和实际信息，始终包括您在响应中使用的每个事实的源名称。使用方形制动器来引用源。对于表格形式的数据，请以HTML表格形式输出，不要使用Markdown表格格式。
-    例如:
-    来源：
-    info1.txt: 内容 <http://www.somedomain1.com/info1.txt>
-    输出: 根据[info1.txt](http://www.somedomain2.com/info1.txt)，内容
-    不要合并来源，而是单独列出每个来源，例如 [info1.txt][info2.pdf].
-    不要使用引用，而是始终将来源路径放在()中，例如(http://www.somedomain1.com/info1.txt)(http://www.somedomain2.com/info2.pdf).
+    每个源都是一个JSON对象, 包含源文件名称、内容和源文件链接。始终包括您在响应中使用的每个事实的源名称。使用方形制动器来引用源。
+    For tabular information return it as an html table. Do not return markdown format.
+
+    EXAMPLES:
+    Sources:
+    [{{
+    "sourcepage":"info1.txt",
+    "content": "面条可以用体外模拟进行GI测试。",
+    "sourcepage_path": "http://www.somedomain1.com/info1.txt"
+    }}]
+
+    user: 面条是否可以用体外模拟进行GI测试？
+    assistant: 根据[info1.txt](http://www.somedomain2.com/info1.txt)，面条可以用体外模拟进行GI测试。
+
+    Sources:
+    [
+    {{
+    "sourcepage":"info1.txt",
+    "content": "内容1",
+    "sourcepage_path": "http://www.somedomain1.com/info1.txt"
+    }},
+    {{
+    "sourcepage":"info2.pdf",
+    "content": "内容2",
+    "sourcepage_path": "http://www.somedomain2.com/info2.pdf"
+    }}
+    ]
+    user: 内容1和内容2是什么？
+    asssitant: 根据[info1.txt](http://www.somedomain2.com/info1.txt)和[info2.pdf](http://www.somedomain2.com/info2.pdf)，内容1和内容2
+
+    Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
+    Don't use reference, ALWAYS keep source page pth in (), e.g. (http://www.somedomain1.com/info1.txt)(http://www.somedomain2.com/info2.pdf).
     
     {follow_up_questions_prompt}
     {injected_prompt}
-    来源:
+    Sources:
     {sources}
     """
 
     follow_up_questions_prompt_content = """生成三个非常简短的后续问题。
-    使用双尖括号来引用问题，例如<<面条是否可以用体外模拟进行GI测试？>>。
+    使用双尖括号来引用问题，例如<<面条是否可以用体外模拟进行GI测试?>>。
     尽量不要重复已经问过的问题。
     仅生成问题，不生成问题前后的任何文本，例如不要生成"下一个问题" """
 
@@ -62,6 +87,8 @@ class ChatReadRetrieveReadApproach(Approach):
         top = overrides.get("top") or 3
         exclude_category = overrides.get("exclude_category") or None
         filter = "category ne '{}'".format(exclude_category.replace("'", "''")) if exclude_category else None
+        useBingSearch = overrides.get("use_bing_search") or False
+        print("useBingSearch: " + str(useBingSearch))
         question = history[-1]["user"]
         
         # STEP 1: Generate an optimized keyword search query based on the chat history and the last question
@@ -87,29 +114,32 @@ class ChatReadRetrieveReadApproach(Approach):
                                           top=top, 
                                           query_caption="extractive|highlight-false" if use_semantic_captions else None)
         else:
-            # r = self.search_client.search(q, filter=filter, top=top)
-            r = self.search_client.search(question, filter=filter, top=top)
-        print(r)
+            r = self.search_client.search(q, filter=filter, top=top)
+
         if use_semantic_captions:
-            results = [doc[self.sourcepage_field] + ": " + nonewlines(" . ".join([c.text for c in doc['@search.captions']])) for doc in r]
+            json_results = [{"sourcepage": doc[self.sourcepage_field], "content": nonewlines(" . ".join([c.text for c in doc['@search.captions']])), "sourcepage_path": doc[self.sourcepage_path_field]} for doc in r]     
         else:
-            results = [doc[self.sourcepage_field] + ": " + nonewlines(doc[self.content_field]) + " <" + doc[self.sourcepage_path_field] + ">" for doc in r if doc['@search.score'] > 10.0]
-        
+            json_results = [{"sourcepage": doc[self.sourcepage_field], "content": nonewlines(doc[self.content_field]), "sourcepage_path": doc[self.sourcepage_path_field]} for doc in r if doc['@search.score']]
+
+        json_results = json.dumps(json_results, ensure_ascii=False)
+        print(json_results)
+        # print("results: "+ str(results))
         # for r in results:
         #     print(r)
             
-        question=history[-1]["user"]
+        # question=history[-1]["user"]
         print("question: " + question)
-        if len(results) > 0: 
-            search_result = []         
-            cognitive_search_result = "\n".join(results)
-            content = cognitive_search_result
-            supporting_facts = results
+        if bool(useBingSearch) == False:          
+            # cognitive_search_result = "\n".join(results)
+            # content = cognitive_search_result
+            supporting_facts = json_results
+            print("supporting_facts from cognitive search: " + str(supporting_facts))
         else:
             search_result = self.get_bing_search_result(question, top)
             bing_search_result = "\n".join(search_result)
             content = bing_search_result
             supporting_facts = search_result
+            print("supporting_facts from bing search: " + str(supporting_facts))
         
         # STEP 3: Generate a response with the retrieved documents as prompt
         follow_up_questions_prompt = self.follow_up_questions_prompt_content if overrides.get("suggest_followup_questions") else ""
@@ -117,35 +147,32 @@ class ChatReadRetrieveReadApproach(Approach):
         # Allow client to replace the entire prompt, or to inject into the exiting prompt using >>>
         prompt_override = overrides.get("prompt_template")
         if prompt_override is None:
-            prompt = self.prompt_prefix.format(injected_prompt="", sources=content, follow_up_questions_prompt=follow_up_questions_prompt)
+            prompt = self.prompt_prefix.format(injected_prompt="", sources=json_results, follow_up_questions_prompt=follow_up_questions_prompt)
         elif prompt_override.startswith(">>>"):
             prompt = self.prompt_prefix.format(injected_prompt=prompt_override[3:] + "\n", sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
         else:
-            prompt = prompt_override.format(sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
+            prompt = prompt_override.format(sources=json_results, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
 
         # STEP 4: Generate a contextual and content specific answer using the search results and chat history
         system_message = [{
             "role": "system",
             "content": f"{prompt}"
-        },{
-            "role": "user",
-            "content": f"{question}"
-        },]
+        }]
         chat_histroy_message = self.get_chat_history_as_text(history, include_last_turn=False)
         user_question_message = {
             "role": "user",
             "content": f"{question}"
         }
+        chat_message=[]
         if len(chat_histroy_message) > 0:
-            system_message = system_message + chat_histroy_message
-            system_message.append(user_question_message)
+            chat_message = system_message + chat_histroy_message
+            chat_message.append(user_question_message)
         else:
-            system_message.append(user_question_message)
+            chat_message.append(user_question_message)
         
-        print(system_message)
         completion = openai.ChatCompletion.create(
             engine=self.chatgpt_deployment,
-            messages=system_message,
+            messages=chat_message,
             temperature=0.0
         )
         wrap_upped_answer = completion['choices'][0]['message']['content']

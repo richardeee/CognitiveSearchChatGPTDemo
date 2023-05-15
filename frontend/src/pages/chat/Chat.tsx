@@ -17,10 +17,11 @@ const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
     const [promptTemplate, setPromptTemplate] = useState<string>("");
     const [retrieveCount, setRetrieveCount] = useState<number>(6);
-    const [useSemanticRanker, setUseSemanticRanker] = useState<boolean>(false);
-    const [useSemanticCaptions, setUseSemanticCaptions] = useState<boolean>(false);
+    const [useSemanticRanker, setUseSemanticRanker] = useState<boolean>(true);
+    const [useSemanticCaptions, setUseSemanticCaptions] = useState<boolean>(true);
     const [excludeCategory, setExcludeCategory] = useState<string>("");
     const [useSuggestFollowupQuestions, setUseSuggestFollowupQuestions] = useState<boolean>(true);
+    const [useBingSearch, setUseBingSearch] = useState<boolean>(false);
 
     const lastQuestionRef = useRef<string>("");
     const chatMessageStreamEnd = useRef<HTMLDivElement | null>(null);
@@ -53,7 +54,8 @@ const Chat = () => {
                     top: retrieveCount,
                     semanticRanker: useSemanticRanker,
                     semanticCaptions: useSemanticCaptions,
-                    suggestFollowupQuestions: useSuggestFollowupQuestions
+                    suggestFollowupQuestions: useSuggestFollowupQuestions,
+                    useBingSearch: useBingSearch
                 }
             };
             const result = await chatApi(request);
@@ -97,6 +99,10 @@ const Chat = () => {
 
     const onUseSuggestFollowupQuestionsChange = (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => {
         setUseSuggestFollowupQuestions(!!checked);
+    };
+
+    const onUseBingSearchChange = (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => {
+        setUseBingSearch(!!checked);
     };
 
     const onExampleClicked = (example: string) => {
@@ -259,6 +265,12 @@ const Chat = () => {
                         checked={useSuggestFollowupQuestions}
                         label="建议后续问题"
                         onChange={onUseSuggestFollowupQuestionsChange}
+                    />
+                    <Checkbox
+                        className={styles.chatSettingsSeparator}
+                        checked={useBingSearch}
+                        label="启用Bing搜索"
+                        onChange={onUseBingSearchChange}
                     />
                 </Panel>
             </div>

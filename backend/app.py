@@ -177,7 +177,7 @@ def askBing():
 def chat():
     ensure_openai_token()
     approach = request.json["approach"]
-    print(request)
+    print(request.json)
     try:
         impl = chat_approaches.get(approach)
         if not impl:
