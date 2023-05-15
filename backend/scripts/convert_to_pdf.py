@@ -1,6 +1,6 @@
 import os
 import sys
-from comtypes import client
+import win32com.client as client
 from openpyxl import load_workbook
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -63,6 +63,10 @@ def convert_jpg_to_pdf(input_file, output_file):
     except:
         print(f"could not convert {input_file}")
 
+def copy_pdf(input_file, output_file):
+    #copy file from input_file to output_file
+    shutil.copy(input_file, output_file)
+
 formats_to_convert = ['.docx', '.xlsx', '.ppt', '.doc', '.jpg']
 converters = {
     '.docx': convert_office_to_pdf,
@@ -71,10 +75,10 @@ converters = {
     '.pptx': convert_ppt_to_pdf,
     '.xlsx': convert_xlsx_to_pdf,
     '.jpg': convert_jpg_to_pdf,
-    '.pdf': shutil.copy,
+    '.pdf': copy_pdf,
 }
 
-data_folder = 'D:/Code/CognitiveSearchGPT/backend/data/'
+data_folder = 'D:/Code/CognitiveSearchGPT/backend/data/Portal/'
 
 for subdir, dirs, files in os.walk(data_folder):
     for file in files:
