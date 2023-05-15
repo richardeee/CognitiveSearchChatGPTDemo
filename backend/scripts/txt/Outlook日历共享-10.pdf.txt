@@ -1,0 +1,28 @@
+3.如果Xiangd不想继续查看Ann已共享的日程，Xiangd需手工删除Ann的
+共享日历
+Microsoft Outlook
+×
+您没有查看此 日历 的权限。
+!
+是否请求 Ann 与您共享其 日历?
+是(Y)
+否(N)
+√ 共享日历
+√
+Ann
+新建日历(N) ...
+隐藏此日历(H)
+覆盖(O)
+SA
+颜色(C)
+>
+□] 重命名日历(R)
+复制日历(C)
+项目:2
+移动日历(M)
+【 删除日历(D)
+へ 上移(U)
+下移(O)
+共享(S)
+>
+属性(P) ... :selected: :selected: :selected: :unselected: :unselected: :unselected: :selected: :unselected: :unselected: :selected: 

@@ -1,0 +1,43 @@
+3. Xiangd再次接受后就能够更新Ann的日程
+√ 接受 2021/3/18(周四) 11:40 Ann 我更改了共享日历的权限 收件人 xiangd 6 Ann (ann@m365x882719.onmicrosoft.com) 已邀请你查看其 日历。 单击上面的“接受”按钮。
+进行了以下更改
+Ann (ann@m365x882719.onmicrosoft.com)更改了共享给你的 Outlook 日历的共享权限。
+你现在能够 查看、编辑和删除此日历上的事件。
+HV Q ↑ ↓ ↓
+test1 - 约会
+×
+文件 约会
+日程安排助理
+插入
+设置文本格式
+审阅
+帮助
+操作说明搜索
+1
+复制到“我的日历” → v
+S
+Skype 会议
+忙 く Ω 无
+v
+v
+…
+I
+√
+标题(L)
+test1
+保存并 关闭(S)
+开始时间(T)
+2021/3/18(周四)
+6:00
+全天(V)
+时区(Z)
+结束时间(D)
+2021/3/18(周四)
+It .
+7:00
+▼
+标记为定期(A)
+位置
+共享文件夹中 Ann
+停止与其他人共享您的日历
+上次修改者:xiangd@m365x882719.onmicrosoft.com, 时间:11:42 :selected: :unselected: :unselected: :selected: :unselected: 

@@ -1,0 +1,20 @@
+“日历"属性
+×
+常规
+自动存档
+权限
+同步
+当前共享对象:
+名称
+权限等级
+My Organization 可查看我的繁忙时间
+权限
+添加(D) ...
+删除(V)
+你对这些权限的更改将应用于组织内的所有用户。
+○无
+◎可查看我的繁忙时间 ○可查看标题和位置 ○可查看全部详细信息
+○可编辑
+确定
+取消
+应用(A) :selected: :unselected: :selected: :unselected: :unselected: :unselected: 

@@ -1,0 +1,44 @@
+4. 更新收件人、主题和邮件正文后，单击"发送"；
+注意:如果您使用保存命令，这会创建草稿邮件，不会更新模板。
+B I U OV Av| 트트 트 별 | 프트
+文件 邮件 插入
+绘图
+选项
+设置文本格式
+审阅
+帮助
+操作说明搜索
+× 剪切
+Calibri (西文正 ~10 ~A AY E vE v A
+[复制
+粘贴
+通讯簿 检查姓名
+附加文件 链接 V v
+签名 v
+v
+格式刷
+剪贴板
+普通文本
+姓名
+添加
+收件人(T)
+sharetest@mindary.com;
+发送(S)
+抄送(C)
+主题(U)
+22020年09月度经营分析会汇报
+2020年09月度经营分析会
+区域销售额
+6
+4
+2
+0
+南区
+北区
+西区
+东区
+系列 1 ■系列 2
+■系列 3
+测试 Test IT基础架构与运维部 深圳迈瑞生物医疗电子股份有限公司深圳市南山区高新技术产业园区科技南 12路迈瑞大厦 邮编:5180500 Tel:+86 755 88888888 Fax:+86 755 88888888 VoIP:755 88888888 E-mail: sharetest@mindray. com Mobile:+86 13812345678 Website: www.mindray.com
+mindray迈瑞 生命科技如此亲近
+Microsoft |Services :unselected: :selected: :selected: :selected: :selected: :selected: :unselected: 

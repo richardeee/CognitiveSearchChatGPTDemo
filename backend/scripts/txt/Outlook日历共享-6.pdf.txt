@@ -1,0 +1,35 @@
+ ↓ … v 面 删除 V :unselected: :selected: :unselected: :selected: :unselected: :unselected: :unselected:"。
+
+
+
+
+
+
+xiangd@m365x882719 ..
+收件箱 草稿 已发送邮件 已删除邮件 RSS 源
+标题(L)
+test1
+保存井
+关闭(S)
+开始时间(T)
+2021/3/18(周四)
+6:00
+□ 全天(Y)
+时区(Z)
+结束时间(D)
+2021/3/18(周四)
+11 .
+6:30
+○ 标记为定期(A)
+存档
+位置
+>对话历史记录 发件箱 垃圾邮件 >搜索文件夹
+>组
+在共享文件夹中
+咸 Ann
+上次修改者:Ann,时间:11:23
+项目:5
+所有文件夹都是最新的。 Bi#### Microsoft Exchange
++ 100%
+如Xiangd需修改Ann的日程，Ann要修改自己的共享日历权限。步骤如下：
+1. Ann将自己共享日历中xiangd的权限更新为可编辑 :selected: :selected: :unselected: :unselected: :selected:   :unselected: :unselected: :unselected: :unselected: :unselected: 

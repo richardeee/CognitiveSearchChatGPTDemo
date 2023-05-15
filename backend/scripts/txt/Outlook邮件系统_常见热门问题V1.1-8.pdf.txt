@@ -1,0 +1,48 @@
+9.2. 如何设置个人邮件签名？
+设置签名的步骤如下：
+1.在"开始"菜单上，新建电子邮件；
+2.在"邮件"菜单上，选择"签名"> "签名(S)…";
+<table><tr><th colSpan=5>文件 邮件 插入 绘图 选项</th><th>设置文本格式 审阅</th><th colSpan=4>帮助 C 操作说明搜索</th></tr><tr><th colSpan=2 rowSpan=2>× 剪切 回复制 粘贴 v ◇ 格式刷 剪贴板</th><th>B I L</th><th colSpan=2>O v A
+v v</th><th>| 트트 르별 | 프트
+-NW</th><th>8 Q 通讯簿 检查姓名</th><th>附加文件 链接 V</th><th>R 签名 √</th><th>口 后续标志 ♥ ュ ー→ !重要性 -高 分配策 略♥ ↓ 重要性 -低</th></tr><tr><th></th><th colSpan=3>普通文本 LA</th><th>姓名</th><th>添加</th><th colSpan=2>Formal 日记</th></tr><tr><td rowSpan=2>发送(S)</td><td colSpan=2>收件人(T)</td><td colSpan=4></td><td></td><td colSpan=2>然名(S) ...</td></tr><tr><td colSpan=2>抄送(C)</td><td colSpan=2></td><td></td><td></td><td></td><td colSpan=2></td></tr><tr><td colSpan=7>主题(U)</td><td colSpan=3></td></tr></table>
+ 
+
+
+
+3.在"选择要编辑的签名"下，选择"新建"，然后在"新签名"对话框中，键入名称点击"确认"
+4.在"编辑签名"下，撰写您的签名。
+签名和信纸
+?
+×
+电子邮件签名(E)
+个人信纸(P)
+选择要编辑的签名(C)
+选择默认签名
+へ
+电子邮件帐户(A): √
+新邮件(M):
+(无)
+√
+答复/转发(F):
+(无)
+v
+删除(D)
+新建(N)
+保存(S)
+重命名(R)
+编辑签名(D)
+新签名
+?
+×
+Calibri (西文正文 √| 11
+BI
+键入此签名的名称(D):
+三 名片(B)
+く
+确定
+取消
+v
+获取签名模板
+确定
+取消
+Microsoft Services :selected: :selected: :selected: 

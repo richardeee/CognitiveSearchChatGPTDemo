@@ -1,0 +1,26 @@
+ 8 G"，接着是跨三列的"Search"，然后是一些空白列和一个"-"，最后是跨两列的"×"。第二行包含了"File Home"、"Send / Receive"、"Folder"、跨两列的"View Help"以及一些空白列。
+
+第三行包含了一些选项，如"New New Email Items v New :selected: :selected:"、"Delete Archive Delete :unselected:"、"-> :selected:"、"Reply Reply All Forward v Respond"、"Move to: ? > To Manager Team Email Quick Steps :unselected: :unselected: :selected:"、"> 1> Move Rules NE OneNote Move"、"Tags"、"Chinese Conversion"、"v Search People 8 Address Book Y Filter Email Find"、"Speech"和"Get Add-ins Add-ins"。
+
+第四行有一个跨列的"× :selected:"。第五行包含了"Favorites"和一些空白列。第六行包含了"收件箱 巳发送邮件 草稿 已刪除邮件"、"v F"、跨四列的"mindray迈"和"瑞"。第七行包含了跨两列的"sharetest@mindray.com"。第八行包含了"收件箱"。第九行包含了"草稿 已发送邮件"、"Sign-in with"、"Mindray email address"和"and AD password."。第十行包含了"已删除邮件"和跨两列的"sharetest@mindray.com"。
+
+第十一行包含了"RSS Feeds 发件箱"和"ct an item to read Je to always preview messages"。第十二行包含了"垃圾邮件"。第十三行包含了"Search Folders"、"v T T"和"Sign in"。第十四行包含了跨两列两行的":selected:"、跨两列两行的"@ 2016 Microsoft readtest"以及一些空白列。
+
+
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+Items: 7
+This folder was last updated on 10/12/2020.
+A Trying to connect ...
+- + 10%
+Microsoft |Services :unselected:         

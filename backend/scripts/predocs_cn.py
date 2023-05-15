@@ -14,7 +14,9 @@ from azure.search.documents.indexes.models import *
 from azure.search.documents import SearchClient
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from msrestazure.azure_cloud import AZURE_CHINA_CLOUD as CLOUD
+from azure.identity import AzureDeveloperCliCredential
 import base64
+import openai
 
 MAX_SECTION_LENGTH = 1000
 SENTENCE_SEARCH_LIMIT = 100
@@ -55,22 +57,34 @@ args = parser.parse_args()
 #         print("Error: Azure Form Recognizer service is not provided. Please provide formrecognizerservice or use --localpdfparser for local pypdf parser.")
 #         exit(1)
 #     formrecognizer_creds = default_creds if args.formrecognizerkey == None else AzureKeyCredential(args.formrecognizerkey)
-AZURE_CLIENT_ID=
-AZURE_CLIENT_SECRET=
-AZURE_SUBSCRIPTION_ID=
-AZURE_TENANT_ID=
+# AZURE_CLIENT_ID=
+# AZURE_CLIENT_SECRET=
+# AZURE_SUBSCRIPTION_ID=
+# AZURE_TENANT_ID=
 
-credentials = ClientSecretCredential(
-            client_id=AZURE_CLIENT_ID,
-            client_secret=AZURE_CLIENT_SECRET,
-            tenant_id=AZURE_TENANT_ID,
-            authority=CLOUD.endpoints.active_directory
-        )
+# credentials = ClientSecretCredential(
+#             client_id=AZURE_CLIENT_ID,
+#             client_secret=AZURE_CLIENT_SECRET,
+#             tenant_id=AZURE_TENANT_ID,
+#             authority=CLOUD.endpoints.active_directory
+#         )
 
-storage_creds = credentials
-search_creds = AzureKeyCredential(args.searchkey)
-if(args.formrecognizerkey):
-    formrecognizer_creds = AzureKeyCredential(args.formrecognizerkey)
+# storage_creds = credentials
+# search_creds = AzureKeyCredential(args.searchkey)
+# if(args.formrecognizerkey):
+#     formrecognizer_creds = AzureKeyCredential(args.formrecognizerkey)
+
+azd_credential = AzureDeveloperCliCredential() if args.tenantid == None else AzureDeveloperCliCredential(tenant_id=args.tenantid)
+default_creds = azd_credential if args.searchkey == None or args.storagekey == None else None
+search_creds = default_creds if args.searchkey == None else AzureKeyCredential(args.searchkey)
+if not args.skipblobs:
+    storage_creds = default_creds if args.storagekey == None else args.storagekey
+if not args.localpdfparser:
+    # check if Azure Form Recognizer credentials are provided
+    if args.formrecognizerservice == None:
+        print("Error: Azure Form Recognizer service is not provided. Please provide formrecognizerservice or use --localpdfparser for local pypdf parser.")
+        exit(1)
+    formrecognizer_creds = default_creds if args.formrecognizerkey == None else AzureKeyCredential(args.formrecognizerkey)
 
 def blob_name_from_file_page(filename, page = 0):
     if os.path.splitext(filename)[1].lower() == ".pdf":
@@ -79,7 +93,8 @@ def blob_name_from_file_page(filename, page = 0):
         return os.path.basename(filename)
 
 def upload_blobs(filename):
-    blob_service = BlobServiceClient(account_url=f"https://{args.storageaccount}.blob.core.chinacloudapi.cn/", credential=storage_creds)
+    blob_service = BlobServiceClient(account_url=f"https://{args.storageaccount}.blob.core.windows.net", credential=storage_creds)
+    # blob_service = BlobServiceClient(account_url=f"https://{args.storageaccount}.blob.core.chinacloudapi.cn/", credential=storage_creds)
     blob_container = blob_service.get_container_client(args.container)
     files_uploaded = []
     if not blob_container.exists():
@@ -97,7 +112,9 @@ def upload_blobs(filename):
             writer.add_page(pages[i])
             writer.write(f)
             f.seek(0)
+            # args.files == ../data/O365/pdf/*, absolution_file_path should be ../data/O365/pdf/split/xxx-0.pdf
             local_file_path = os.path.splitext(os.path.basename(filename))[0] + f"-{i}" + ".pdf"
+            # absolute_file_path = os.path.abspath(args.files) + '/split/'+os.path.splitext(os.path.basename(filename))[0] + f"-{i}" + ".pdf"
             writer.write(local_file_path)
             remote_file_path = os.path.join(args.folder+'/', blob_name)
             blob_container.upload_blob(remote_file_path, f, overwrite=True)
@@ -109,7 +126,8 @@ def upload_blobs(filename):
 
 def remove_blobs(filename):
     if args.verbose: print(f"Removing blobs for '{filename or '<all>'}'")
-    blob_service = BlobServiceClient(account_url=f"https://{args.storageaccount}.blob.core.chinacloudapi.cn/", credential=storage_creds)
+    blob_service = BlobServiceClient(account_url=f"https://{args.storageaccount}.blob.core.windows.net", credential=storage_creds)
+    # blob_service = BlobServiceClient(account_url=f"https://{args.storageaccount}.blob.core.chinacloudapi.cn/", credential=storage_creds)
     blob_container = blob_service.get_container_client(args.container)
     if blob_container.exists():
         if filename == None:
@@ -148,7 +166,8 @@ def get_document_text(filename):
             offset += len(page_text)
     else:
         if args.verbose: print(f"Extracting text from '{filename}' using Azure Form Recognizer")
-        form_recognizer_client = DocumentAnalysisClient(endpoint=f"https://{args.formrecognizerservice}.cognitiveservices.azure.cn/", credential=formrecognizer_creds, headers={"x-ms-useragent": "azure-search-chat-demo/1.0.0"})
+        form_recognizer_client = DocumentAnalysisClient(endpoint=f"https://{args.formrecognizerservice}.cognitiveservices.azure.com/", credential=formrecognizer_creds, headers={"x-ms-useragent": "azure-search-chat-demo/1.0.0"})
+        # form_recognizer_client = DocumentAnalysisClient(endpoint=f"https://{args.formrecognizerservice}.cognitiveservices.azure.cn/", credential=formrecognizer_creds, headers={"x-ms-useragent": "azure-search-chat-demo/1.0.0"})
         with open(filename, "rb") as f:
             poller = form_recognizer_client.begin_analyze_document("prebuilt-layout", document = f)
             # poller = form_recognizer_client.begin_analyze_document_from_url("prebuilt-layout", document_url = f"https://{args.storageaccount}.blob.core.chinacloudapi.cn/{args.container}/{args.folder}/{blob_name_from_file_page(filename)}")
@@ -177,7 +196,10 @@ def get_document_text(filename):
                 if table_id == -1:
                     page_text += form_recognizer_results.content[page_offset + idx]
                 elif not table_id in added_tables:
-                    page_text += table_to_html(tables_on_page[table_id])
+                    table_text = table_to_html(tables_on_page[table_id])
+                    table_discription = get_table_description_text(table_text)
+                    page_text += table_text
+                    page_text += table_discription
                     added_tables.add(table_id)
 
             page_text += " "
@@ -185,6 +207,31 @@ def get_document_text(filename):
             offset += len(page_text)
 
     return page_map
+
+def get_table_description_text(table_text):
+    prompt = """以自然语言描述下面这个表格，要求保持数据准确，保留所有表格中的数据和信息 {text} """
+    openai.api_type = "azure"
+    openai.api_key = "8d9d5bed67804a7aa7119b46b85a307c"
+    openai.api_base = "https://openai-helpdesk.openai.azure.com/"
+    openai.api_version = "2023-03-15-preview"
+
+    message = [
+        {
+            "role":"user",
+            "content": prompt.format(text=table_text)
+        }
+    ]
+    try:
+        completion = openai.ChatCompletion.create(
+                engine="gpt-4",
+                messages=message,
+                temperature=0.0
+        )
+        table_description = completion['choices'][0]['message']['content']
+        print(table_description)
+    except:
+        table_description = ""
+    return table_description
 
 def split_text(page_map):
     SENTENCE_ENDINGS = [".", "!", "?"]
@@ -260,13 +307,16 @@ def create_sections(filename, page_map):
             "sourcepage": os.path.basename(filename),
             "sourcefile": os.path.basename(filename),
             "metadata_storage_name": os.path.basename(filename),
-            "metadata_storage_path": f"https://{args.storageaccount}.blob.core.chinacloudapi.cn/{args.container}/{args.folder}/{os.path.basename(filename)}"
+            "metadata_storage_path": f"https://{args.storageaccount}.blob.core.windows.net/{args.container}/{args.folder}/{os.path.basename(filename)}"
+            # "metadata_storage_path": f"https://{args.storageaccount}.blob.core.chinacloudapi.cn/{args.container}/{args.folder}/{os.path.basename(filename)}"
         }
 
 def create_search_index():
     if args.verbose: print(f"Ensuring search index {args.index} exists")
-    index_client = SearchIndexClient(endpoint=f"https://{args.searchservice}.search.azure.cn/",
+    index_client = SearchIndexClient(endpoint=f"https://{args.searchservice}.search.windows.net/",
                                      credential=search_creds)
+    # index_client = SearchIndexClient(endpoint=f"https://{args.searchservice}.search.azure.cn/",
+    #                                  credential=search_creds)
     print(args.index)
     for i in index_client.list_index_names():
         print(i)
@@ -293,12 +343,19 @@ def create_search_index():
 
 def index_sections(filename, sections):
     if args.verbose: print(f"Indexing sections from '{filename}' into search index '{args.index}'")
-    search_client = SearchClient(endpoint=f"https://{args.searchservice}.search.azure.cn/",
+    search_client = SearchClient(endpoint=f"https://{args.searchservice}.search.windows.net/",
                                     index_name=args.index,
                                     credential=search_creds)
+    # search_client = SearchClient(endpoint=f"https://{args.searchservice}.search.azure.cn/",
+    #                                 index_name=args.index,
+    #                                 credential=search_creds)
     i = 0
     batch = []
     for s in sections:
+        # Save section to txt file
+        with open("txt/"+s["sourcefile"]+".txt", "w", encoding="utf-8") as f:
+            f.write(s["content"])
+
         batch.append(s)
         i += 1
         if i % 100 == 0:
@@ -314,9 +371,12 @@ def index_sections(filename, sections):
 
 def remove_from_index(filename):
     if args.verbose: print(f"Removing sections from '{filename or '<all>'}' from search index '{args.index}'")
-    search_client = SearchClient(endpoint=f"https://{args.searchservice}.search.azure.cn/",
+    search_client = SearchClient(endpoint=f"https://{args.searchservice}.search.windows.net/",
                                     index_name=args.index,
                                     credential=search_creds)
+    # search_client = SearchClient(endpoint=f"https://{args.searchservice}.search.azure.cn/",
+    #                                 index_name=args.index,
+    #                                 credential=search_creds)
     while True:
         filter = None if filename == None else f"sourcefile eq '{os.path.basename(filename)}'"
         r = search_client.search("", filter=filter, top=1000, include_total_count=True)

@@ -1,0 +1,51 @@
+5. 以"新建电子邮件联系人"为例，在弹出的"添加新成员"窗口中，输入"名称"和"邮件地址"，d 单击"确定"：
+6.成员添加完成后，单击"保存并关闭"，新创建的群组将显示在列表中；
+文件
+联系人组
+插入
+绘图
+设置文本格式
+审阅
+→
+11个 面 8元
+10
+Q
+保存并关闭 删除组 转发组
+成员
+附注
+添加成员 删除成员 立即更新
+电子邮件 会议
+分类 后续标志 专
+v
+v
+v
+v 用
+缩放
+动作
+显示
+来自Outlook 联系人(C)
+通信
+标记
+缩放 く
+名称(M) |姓名 ▲
+从通讯簿(A)
+2 新建电子邮件联系人(E)
+找个到安仕此处並不的任何内容。
+添加新成员
+×
+*********
+.4
+显示名称(D):
+李沐阳 Sunshine Li
+电子邮件地址(M):
+xxx@mindray.com
+电子邮件类型(V):
+SMTP
+自定义类型(D)
+Internet 格式:
+让 Outlook 决定最佳发送格式
+√
+☑添加到联系人(A)
+确定
+取消
+Microsoft |Services :selected: :unselected: :unselected: :unselected: :unselected: :unselected: :selected: :selected: :selected: 

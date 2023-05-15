@@ -1,0 +1,18 @@
+<table><tr><td rowSpan=2>发送(S)</td><td>发件人(M) v</td><td colSpan=2></td></tr><tr><td>收件人(D)</td><td></td><td></td></tr><tr><td></td><td>抄送(C)</td><td></td><td></td></tr><tr><td colSpan=4>主题(U)</td></tr><tr><td colSpan=2>您好!</td><td colSpan=2></td></tr><tr><td colSpan=4>欢迎使用迈瑞 Outlook 邮件系统!</td></tr></table>
+
+
+mindray BIX
+O
+迈瑞邮件系统
+正式启用
+邮件项目组
+（效果示例图）
+10. 与联系人相关的常见问题
+10.1.如何搜索通讯录？
+用户可通过多种方式搜索联系人
+• 使用Outlook功能区上的"搜索人员框"或"通讯薄"进行搜索；
+• 在撰写新邮件或会议时进行搜索；
+• 在Outlook "人员"窗格中进行搜索。
+方式一：使用Outlook功能区上的"搜索人员框"或"通讯薄"进行搜索
+这是最快捷、最简便的联系人查找方式。将光标放在“搜索人员”框中，然后键入联系人名字或 电子邮件地址的前几个字母。键入内容时，Outlook会不断优化搜索结果。
+Microsoft |Services 

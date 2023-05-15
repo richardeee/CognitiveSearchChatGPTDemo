@@ -1,0 +1,15 @@
+添加用户
+×
+搜索(S): ◎仅名称(N) ○更多列(R)
+通讯簿(D)
+Offline Global Address List - ann@m365x882 v
+搜索(G)
+高级查找(V)
+<table><tr><th>名称 职务</th><th>商务电话</th><th>位置</th><th>部门</th><th>电子邮件地址</th><th></th></tr><tr><td>8 admin</td><td></td><td></td><td></td><td>admin@m365x882719.onmic ^</td><td></td></tr><tr><td>All Company</td><td></td><td></td><td></td><td>allcompany@m365x882719.</td><td></td></tr><tr><td>&amp; Andy</td><td></td><td></td><td></td><td>andy@m365x882719.onmicr</td><td></td></tr><tr><td>8 Ann</td><td></td><td></td><td></td><td>ann@m365x882719.onmicro</td><td></td></tr><tr><td>8 xiangd</td><td></td><td colSpan=2></td><td>xiangd@m365x882719.onmi</td><td></td></tr></table>
+>
+√
+添加(A)
+确定
+取消
+4.选择希望此人使用日历的方式并确定。如果决定目前不共享日历，请选择取
+消。 :selected: :selected: :unselected: 
