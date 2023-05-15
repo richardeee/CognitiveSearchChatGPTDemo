@@ -62,6 +62,8 @@ def convert_jpg_to_pdf(input_file, output_file):
         print(f"Converted '{input_file}' to '{output_file}'")
     except:
         print(f"could not convert {input_file}")
+def copy_file(input_file, output_file):
+    shutil.copy(input_file, output_file)
 
 formats_to_convert = ['.docx', '.xlsx', '.ppt', '.doc', '.jpg']
 converters = {
@@ -71,10 +73,10 @@ converters = {
     '.pptx': convert_ppt_to_pdf,
     '.xlsx': convert_xlsx_to_pdf,
     '.jpg': convert_jpg_to_pdf,
-    '.pdf': shutil.copy,
+    '.pdf': copy_file,
 }
 
-data_folder = 'D:/Code/CognitiveSearchGPT/backend/data/'
+data_folder = 'D:/Code/CognitiveSearchChatGPTDemo/backend/data/O365/'
 
 for subdir, dirs, files in os.walk(data_folder):
     for file in files:
