@@ -211,8 +211,8 @@ def get_document_text(filename):
 def get_table_description_text(table_text):
     prompt = """以自然语言描述下面这个表格，要求保持数据准确，保留所有表格中的数据和信息 {text} """
     openai.api_type = "azure"
-    openai.api_key = "8d9d5bed67804a7aa7119b46b85a307c"
-    openai.api_base = "https://openai-helpdesk.openai.azure.com/"
+    openai.api_key = 
+    openai.api_base = 
     openai.api_version = "2023-03-15-preview"
 
     message = [

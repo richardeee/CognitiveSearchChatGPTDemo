@@ -45,3 +45,6 @@ class CosmosIndexStore(CosmosKVIndexStore):
         """Load a MongoIndexStore from a MongoDB host and port."""
         mongo_kvstore = MongoDBKVStore.from_host_and_port(host, port, db_name)
         return cls(mongo_kvstore, namespace, collection)
+    
+    def get_indexes(cls):
+        return super().get_indexes()
