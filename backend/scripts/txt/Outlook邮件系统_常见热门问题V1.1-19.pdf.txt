@@ -1,8 +1,0 @@
-com</td></tr><tr><td>Yahoo Mail 升级 Yahoo Mail</td><td colSpan=2>NE OneNote(N) 忽略(I)</td><td></td><td>创建
-管理</td><td>规则(L) ...
-规则和通知(L) ...</td></tr></table>
-
-
-2.选择其中一个选项。Outlook将自动建议创建基于发件人和收件人的规则。若要查看更多选 项，请选择"创建规则"。
-3.在"创建规则"对话框中，选择一个或多个最先的三个复选框。
-Microsoft |Services 

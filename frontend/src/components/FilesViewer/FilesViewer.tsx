@@ -2,7 +2,7 @@ import { Uploader } from "uploader";
 import styles from "./FilesViewer.module.css";
 import { File } from "./File";
 import { UploadDropzone } from "react-uploader";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, ChangeEvent } from "react";
 
 const uploader = Uploader({
     apiKey: "free"
@@ -180,6 +180,44 @@ export const DataGrid = () => {
         ]
     );
 
+    const [file, setFile] = useState<File>()
+
+    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files) {
+            return;
+          }
+
+        if (e.target.files) {
+          setFile(e.target.files[0]);
+        }
+      };
+
+    const handleUploadFile = () => {
+        if (!file) {
+            return;
+        }
+        console.log(file)
+        
+        const formData = new FormData();
+
+        formData.append("name", file.name);
+
+        formData.append("file", file);
+
+        fetch('/uploadFile', {
+        //   mode: "cors",
+          method: 'POST',
+          body: formData,
+          headers: {
+            // 'content-type': file.type,
+            // 'content-length': `${file.size}`, // 👈 Headers need to be a string
+          },
+        }).then((response) => {
+          response.json()
+        }).then((data) => console.log(data))
+        .then((err) => console.log(err))
+      }
+
     const rows = sort(
         getRows(row => {
             const selected = isRowSelected(row.rowId);
@@ -220,6 +258,7 @@ export const DataGrid = () => {
             }
         }
     };
+
 
 
     return (
@@ -318,20 +357,14 @@ export const DataGrid = () => {
                         <DialogSurface>
                             <DialogTitle>上传新文档</DialogTitle>
                             <DialogBody>
-                                <UploadDropzone
-                                    uploader={uploader}
-                                    options={uploaderOptions}
-                                    onUpdate={(files: any[]) => console.log(files.map(x => x.fileUrl).join("\n"))}
-                                    onComplete={(files: any[]) => alert(files.map(x => x.fileUrl).join("\n"))}
-                                    width="600px"
-                                    height="375px"
-                                />
+                                    <input type="file" onChange={handleFileChange} name="file"/>
+                                    <div>{file && `${file.name} - ${file.type}`}</div>
                             </DialogBody>
                             <DialogActions>
                                 <DialogTrigger disableButtonEnhancement>
                                     <Button appearance="secondary">取消</Button>
                                 </DialogTrigger>
-                                <Button appearance="primary">确认</Button>
+                                <Button appearance="primary" onClick={handleUploadFile}>确认</Button>
                             </DialogActions>
                         </DialogSurface>
                     </Dialog>

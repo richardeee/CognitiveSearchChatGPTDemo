@@ -77,17 +77,10 @@ converters = {
     '.pptx': convert_ppt_to_pdf,
     '.xlsx': convert_xlsx_to_pdf,
     '.jpg': convert_jpg_to_pdf,
-<<<<<<< HEAD
     '.pdf': copy_file,
 }
 
 data_folder = 'D:/Code/CognitiveSearchChatGPTDemo/backend/data/O365/'
-=======
-    '.pdf': copy_pdf,
-}
-
-data_folder = 'D:/Code/CognitiveSearchGPT/backend/data/Portal/'
->>>>>>> 189e70827624452d017320b48bce853be1568c8f
 
 for subdir, dirs, files in os.walk(data_folder):
     for file in files:

@@ -12,3 +12,4 @@ pypdf==3.7.1
 tiktoken
 llama-index
 nltk
+Flask-Reuploaded

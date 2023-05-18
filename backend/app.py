@@ -16,6 +16,7 @@ from approaches.bingsearchandanswer import BingSearchApproach
 from azure.storage.blob import BlobServiceClient
 from azure.core.credentials import AzureKeyCredential
 import azure.cognitiveservices.speech as speechsdk
+from werkzeug.utils import secure_filename
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -23,6 +24,8 @@ load_dotenv()
 # Replace these with your own values, either in environment variables or directly here
 AZURE_BLOB_STORAGE_ACCOUNT = os.environ.get("AZURE_BLOB_STORAGE_ACCOUNT") or "openaidemostorageaccount"
 AZURE_BLOB_STORAGE_CONTAINER = os.environ.get("AZURE_BLOB_STORAGE_CONTAINER") or "content"
+AZURE_BLOB_STORAGE_FOLDER = os.environ.get("AZURE_BLOB_STORAGE_FOLDER") or "documents"
+
 AZURE_SEARCH_SERVICE = os.environ.get("AZURE_SEARCH_SERVICE") or "cognitivesearchgpt"
 AZURE_SEARCH_INDEX = os.environ.get("AZURE_SEARCH_INDEX") or "gpt-index"
 AZURE_OPENAI_SERVICE = os.environ.get("AZURE_OPENAI_SERVICE") or "az-openai-v2"
@@ -64,7 +67,7 @@ audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
 
 
 def azurearm_credentials():
-    if(IS_DEPLOYED_TO_CHINA_21v):
+    if(IS_DEPLOYED_TO_CHINA_21v and IS_DEPLOYED_TO_CHINA_21v == True):
         credentials = ClientSecretCredential(
             client_id=AZURE_CLIENT_ID,
             client_secret=AZURE_CLIENT_SECRET,
@@ -92,7 +95,7 @@ openai.api_version = "2023-03-15-preview"
 # openai.api_key = openai_token.token
 
 # Set up clients for Cognitive Search and Storage
-if IS_DEPLOYED_TO_CHINA_21v:
+if IS_DEPLOYED_TO_CHINA_21v and IS_DEPLOYED_TO_CHINA_21v == True:
     search_client = SearchClient(
         endpoint=AZURE_COGNITIVE_SEARCH_ENDPOINT,
         index_name=AZURE_SEARCH_INDEX,
@@ -114,6 +117,7 @@ else:
         credential=blob_credential)
     blob_container = blob_client.get_container_client(AZURE_BLOB_STORAGE_CONTAINER)
     blob_list = blob_container.list_blobs()
+    
 
 # Various approaches to integrate GPT and external knowledge, most applications will use a single one of these patterns
 # or some derivative, here we include several for exploration purposes
@@ -217,7 +221,41 @@ def readOutLoud():
     stream = generate()
     return Response(stream.read(), mimetype="audio/mp3")
 
-      
+@app.route("/uploadFile", methods=["POST"])
+def upload_file():
+    # Uploading file
+    if 'file' not in request.files:
+        return "Please send a POST request with a file", 400
+
+    for name in blob_container.list_blob_names():
+        print(name)
+    filepath = None
+    try:
+        uploaded_file = request.files["file"]
+        filename = secure_filename(uploaded_file.filename)
+        print(filename)
+        if not os.path.exists('documents'):
+            os.makedirs('./documents')
+        filepath = os.path.join('documents', os.path.basename(filename))
+        print(filepath)
+        uploaded_file.save(filepath)
+        #upload file to azure blob storage
+        with open(filepath, 'rb') as f:
+            remote_file_path = os.path.join(AZURE_BLOB_STORAGE_FOLDER+'/', filename)
+            blob_container.upload_blob(remote_file_path, f, overwrite=True)
+
+    except Exception as e:
+        # cleanup temp file
+        if filepath is not None and os.path.exists(filepath):
+            os.remove(filepath)
+        return "Error: {}".format(str(e)), 500
+
+    # cleanup temp file
+    if filepath is not None and os.path.exists(filepath):
+        os.remove(filepath)
+
+    return "File inserted!", 200
+  
 def ensure_openai_token():
     # global openai_token
     # if openai_token.expires_on < int(time.time()) - 60:

@@ -21,7 +21,8 @@ export default defineConfig({
     server: {
         proxy: {
             "/ask": "http://127.0.0.1:5000",
-            "/chat": "http://127.0.0.1:5000"
+            "/chat": "http://127.0.0.1:5000",
+            "/uploadFile": "http://127.0.0.1:5000"
         }
     }
 });
