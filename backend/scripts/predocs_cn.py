@@ -113,9 +113,10 @@ def upload_blobs(filename):
             writer.write(f)
             f.seek(0)
             # args.files == ../data/O365/pdf/*, absolution_file_path should be ../data/O365/pdf/split/xxx-0.pdf
+            os.path.exists("pdf") or os.makedirs("pdf")
             local_file_path = os.path.splitext(os.path.basename(filename))[0] + f"-{i}" + ".pdf"
             # absolute_file_path = os.path.abspath(args.files) + '/split/'+os.path.splitext(os.path.basename(filename))[0] + f"-{i}" + ".pdf"
-            writer.write(local_file_path)
+            writer.write("pdf/"+local_file_path)
             remote_file_path = os.path.join(args.folder+'/', blob_name)
             blob_container.upload_blob(remote_file_path, f, overwrite=True)
     else:
@@ -166,9 +167,9 @@ def get_document_text(filename):
             offset += len(page_text)
     else:
         if args.verbose: print(f"Extracting text from '{filename}' using Azure Form Recognizer")
-        form_recognizer_client = DocumentAnalysisClient(endpoint=f"https://{args.formrecognizerservice}.cognitiveservices.azure.com/", credential=formrecognizer_creds, headers={"x-ms-useragent": "azure-search-chat-demo/1.0.0"})
-        # form_recognizer_client = DocumentAnalysisClient(endpoint=f"https://{args.formrecognizerservice}.cognitiveservices.azure.cn/", credential=formrecognizer_creds, headers={"x-ms-useragent": "azure-search-chat-demo/1.0.0"})
-        with open(filename, "rb") as f:
+        # form_recognizer_client = DocumentAnalysisClient(endpoint=f"https://{args.formrecognizerservice}.cognitiveservices.azure.com/", credential=formrecognizer_creds, headers={"x-ms-useragent": "azure-search-chat-demo/1.0.0"})
+        form_recognizer_client = DocumentAnalysisClient(endpoint=f"https://{args.formrecognizerservice}.cognitiveservices.azure.cn/", credential=formrecognizer_creds, headers={"x-ms-useragent": "azure-search-chat-demo/1.0.0"})
+        with open("pdf/"+filename, "rb") as f:
             poller = form_recognizer_client.begin_analyze_document("prebuilt-layout", document = f)
             # poller = form_recognizer_client.begin_analyze_document_from_url("prebuilt-layout", document_url = f"https://{args.storageaccount}.blob.core.chinacloudapi.cn/{args.container}/{args.folder}/{blob_name_from_file_page(filename)}")
         form_recognizer_results = poller.result()
@@ -211,8 +212,8 @@ def get_document_text(filename):
 def get_table_description_text(table_text):
     prompt = """以自然语言描述下面这个表格，要求保持数据准确，保留所有表格中的数据和信息 {text} """
     openai.api_type = "azure"
-    openai.api_key = 
-    openai.api_base = 
+    openai.api_key = "8d9d5bed67804a7aa7119b46b85a307c"
+    openai.api_base = "https://openai-helpdesk.openai.azure.com/"
     openai.api_version = "2023-03-15-preview"
 
     message = [
@@ -353,6 +354,7 @@ def index_sections(filename, sections):
     batch = []
     for s in sections:
         # Save section to txt file
+        os.path.exists("txt") or os.makedirs("txt")
         with open("txt/"+s["sourcefile"]+".txt", "w", encoding="utf-8") as f:
             f.write(s["content"])
 
@@ -412,13 +414,13 @@ else:
         else:
             if not args.skipblobs:
                 upload_blobs(filename)
-            reader = PdfReader(filename)
-            pages = reader.pages
-            for i in range(len(pages)):
-                f = blob_name_from_file_page(filename,i)
-                page_map = get_document_text(f)
-                sections = create_sections(f, page_map)
-                index_sections(f, sections)
-            # page_map = get_document_text(filename)
-            # sections = create_sections(os.path.basename(filename), page_map)
-            # index_sections(os.path.basename(filename), sections)
+            # reader = PdfReader(filename)
+            # pages = reader.pages
+            # for i in range(len(pages)):
+            #     f = blob_name_from_file_page(filename,i)
+            #     page_map = get_document_text(f)
+            #     sections = create_sections(f, page_map)
+            #     index_sections(f, sections)
+            page_map = get_document_text(filename)
+            sections = create_sections(os.path.basename(filename), page_map)
+            index_sections(os.path.basename(filename), sections)

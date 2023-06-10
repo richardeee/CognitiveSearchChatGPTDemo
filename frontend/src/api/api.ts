@@ -95,7 +95,7 @@ export async function chatApi(options: ChatRequest): Promise<AskResponse> {
 }
 
 export async function readApi(options: ReadRequest): Promise<void>{
-    const speech_key = "e985cb0392ad45d59681a396b208ebcf"
+    const speech_key = ""
     const speech_region = "southcentralus"
     var speechConfig = SpeechConfig.fromSubscription(speech_key,speech_region);
     const audioConfig = AudioConfig.fromDefaultSpeakerOutput();

@@ -7,6 +7,7 @@ import openai
 from langchain.chat_models  import AzureChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from llama_index import LangchainEmbedding
+from llama_index.vector_stores import QdrantVectorStore
 from llama_index import (
     LLMPredictor,
     ServiceContext
@@ -15,11 +16,14 @@ from llama_index.node_parser import SimpleNodeParser
 from llama_index.langchain_helpers.text_splitter import TokenTextSplitter
 from llama_index import SimpleDirectoryReader, Document
 from llama_index.indices.knowledge_graph.base import GPTKnowledgeGraphIndex
+import qdrant_client
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
-AZURE_INDEX_STORAGE_CONNECTION_STRING = os.environ.get("AZURE_INDEX_STORAGE_CONNECTION_STRING")
+AZURE_INDEX_STORAGE_CONNECTION_STRING = os.environ.get("AZURE_INDEX_STORAGE_CONNECTION_STRING") or None
+AZURE_QDRANT_HOST = os.environ.get("AZURE_QDRANT_HOST") or None
 AZURE_OPENAI_API_BASE = os.environ.get("AZURE_OPENAI_BASE")
 AZURE_OPENAI_API_KEY = os.environ.get("AZURE_OPENAI_API_KEY_SOUTH_CENTRAL_US")
 AZURE_OPENAI_CHATGPT_DEPLOYMENT = os.environ.get("AZURE_OPENAI_CHATGPT_DEPLOYMENT")
@@ -33,13 +37,15 @@ openai.api_key = AZURE_OPENAI_API_KEY
 class GPTKGIndexer:
 
     def __init__(self):
+        if AZURE_INDEX_STORAGE_CONNECTION_STRING is None or AZURE_QDRANT_HOST is None:
+            return
         self._connection_string = AZURE_INDEX_STORAGE_CONNECTION_STRING
         self._index_store = CosmosIndexStore.from_uri(uri=str(self._connection_string), db_name="kg_index")
         self._doc_store = CosmosDocumentStore.from_uri(uri=str(self._connection_string), db_name = "doc_store")
         self._storage_context = StorageContext.from_defaults(
             docstore=self._doc_store,
             index_store=self._index_store)
-        self._llm = AzureChatOpenAI(deployment_name="gpt-4", 
+        self._llm = AzureChatOpenAI(deployment_name=str(AZURE_OPENAI_CHATGPT_DEPLOYMENT), 
             openai_api_key=openai.api_key,
             openai_api_base=openai.api_base,
             openai_api_type=openai.api_type,

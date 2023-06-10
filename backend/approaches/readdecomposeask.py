@@ -68,8 +68,7 @@ class ReadDecomposeAsk(Approach):
                                       top = 1,
                                       include_total_count=True,
                                       query_type=QueryType.SEMANTIC, 
-                                      query_language="en-US", 
-                                      query_speller="lexicon", 
+                                      query_language="zh-CN", 
                                       semantic_configuration_name="default",
                                       query_answer="extractive|count-1",
                                       query_caption="extractive|highlight-false")
@@ -108,7 +107,7 @@ class ReadDecomposeAsk(Approach):
         
         tools = [
             Tool(name="Search", description="Search in document store", func=lambda q: self.search(q, overrides)),
-            # Tool(name="Lookup", description="Lookup in document store", func=lambda q: self.lookup(q,overrides))
+            Tool(name="Lookup", description="Lookup in document store", func=lambda q: self.lookup(q,overrides))
         ]
 
         # Like results above, not great to keep this as a global, will interfere with interleaving

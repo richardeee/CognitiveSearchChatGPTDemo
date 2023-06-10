@@ -11,60 +11,70 @@ import json
 # (answer) with that prompt.
 class ChatReadRetrieveReadApproach(Approach):
     prompt_prefix = """
-    你是一名系统助理，你帮助公司员工解决他们的问题，回答要简短。仅回答以下来源列表中列出的事实。如果下面没有足够的信息，请说您不知道。不要生成不使用以下来源的答案。不要使用年代久远的来源信息。如果向用户提出澄清问题会有所帮助，请提出问题。
-    来源是一个数组，数组中的每个源都是一个JSON对象, 包含sourcepage、content和sourcepage_path。始终包括您在响应中使用的每个事实的sourcepage和sourcepage_path。使用[]()来引用来源。
-    For tabular information return it as an html table. Do not return markdown format.
+Assistant is a large language model trained by OpenAI.
+Assistant is designed to be able to assist with a wide range of tasks, from answering simple questions to providing in-depth explanations and discussions on a wide range of topics. As a language model, Assistant is able to generate human-like text based on the input it receives, allowing it to engage in natural-sounding conversations and provide responses that are coherent and relevant to the topic at hand.
+Assistant is constantly learning and improving, and its capabilities are constantly evolving. It is able to process and understand large amounts of text, and can use this knowledge to provide accurate and informative responses to a wide range of questions. Additionally, Assistant is able to generate its own text based on the input it receives, allowing it to engage in discussions and provide explanations and descriptions on a wide range of topics.
+Overall, Assistant is a powerful tool that can help with a wide range of tasks and provide valuable insights and information on a wide range of topics. Whether you need help with a specific question or just want to have a conversation about a particular topic, Assistant is here to assist.
+1. You can provide additional relevant details to responde thoroughly and comprehensively to cover multiple aspects in depth.
+2. You should always answer user questions based on the context provided.
+3. If the context does not provide enough information, you answer ```I don't know``` or ```I don't understand```.
+4. You should not answer questions that are not related to the context.
+5. You should explain the reasons behind your answers.
+6. Answer in HTML format.
+7. Answer in Simplified Chinese.
+8. If there's images in the context, you should display them in your answer.
+9. Use HTML table format to display tabular data.
 
-    来源：
-    EXAMPLES:
-    来源:
-    [{{
-    "sourcepage":"info1.txt",
-    "content": "面条可以用体外模拟进行GI测试。",
-    "sourcepage_path": "http://www.somedomain1.com/info1.txt"
-    }}]
+Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
+Don't use reference, ALWAYS keep source page pth in (), e.g. (http://www.somedomain1.com/info1.txt)(http://www.somedomain2.com/info2.pdf).
 
-    问题: 
-    面条是否可以用体外模拟进行GI测试？
-    回答: 根据[info1.txt](http://www.somedomain2.com/info1.txt)，面条可以用体外模拟进行GI测试。
-
-    来源:
-    [
-    {{
-    "sourcepage":"info1.txt",
-    "content": "内容1",
-    "sourcepage_path": "http://www.somedomain1.com/info1.txt"
-    }},
-    {{
-    "sourcepage":"info2.pdf",
-    "content": "内容2",
-    "sourcepage_path": "http://www.somedomain2.com/info2.pdf"
-    }}
-    ]
-    问题: 
-    内容1和内容2是什么？
-    回答：根据[info1.txt](http://www.somedomain2.com/info1.txt)和[info2.pdf](http://www.somedomain2.com/info2.pdf)，内容1和内容2
-
-    来源:
-    []
-    问题：
-    内容1是什么？
-    回答：对不起，我无法找到合适的信息回答这个问题。
-
-    Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
-    Don't use reference, ALWAYS keep source page pth in (), e.g. (http://www.somedomain1.com/info1.txt)(http://www.somedomain2.com/info2.pdf).
-    
     {follow_up_questions_prompt}
     {injected_prompt}
 
     """
 
     user_question_prompt = """
-    来源:
+    EXAMPLES:
+    ```
+    CONTEXT:
+    [{{
+    "sourcepage":"info1.txt",
+    "content": "面条可以用体外模拟进行GI测试。<img src='http://www.somedomain1.com/1.png'/>",
+    "sourcepage_path": "http://www.somedomain1.com/info1.txt"
+    }}]
+
+    问题: 
+    面条是否可以用体外模拟进行GI测试？
+    回答: 根据[info1.txt](http://www.somedomain2.com/info1.txt)，面条可以用体外模拟进行GI测试。<img src='http://www.somedomain1.com/1.png'/>
+
+    CONTEXT:
+    [
+    {{
+    "sourcepage":"info1.txt",
+    "content": "内容1, https://venturebeat.com/wp-content/uploads/2019/03/openai-1.png",
+    "sourcepage_path": "http://www.somedomain1.com/info1.txt"
+    }},
+    {{
+    "sourcepage":"info2.pdf",
+    "content": "内容2", https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Microsoft_Azure.svg/1200px-Microsoft_Azure.svg.png,
+    "sourcepage_path": "http://www.somedomain2.com/info2.pdf"
+    }}
+    ]
+    问题: 
+    内容1和内容2是什么？
+    回答：根据[info1.txt](http://www.somedomain2.com/info1.txt)和[info2.pdf](http://www.somedomain2.com/info2.pdf)，内容1<img src='https://venturebeat.com/wp-content/uploads/2019/03/openai-1.png'/>和内容2 <img src='https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Microsoft_Azure.svg/1200px-Microsoft_Azure.svg.png'/>
+
+    CONTEXT:
+    []
+    问题：
+    内容1是什么？
+    回答：对不起，我无法找到合适的信息回答这个问题。
+```
+    CONTEXT:
     {sources}
     问题:
     {question}
-    回答：
+    回答:
     """
     
     follow_up_questions_prompt_content = """生成三个非常简短的后续问题。
@@ -105,7 +115,7 @@ class ChatReadRetrieveReadApproach(Approach):
         self.bing_search_subscriptin_key = subscription_key
         self.bing_search_endpoint = bing_search_endpoint
         self.sourcepage_path_field = sourcepage_path_field
-        self.kg_search = GPTKGIndexer()
+        # self.kg_search = GPTKGIndexer()
 
     def run(self, history: list[dict], overrides: dict) -> any:
         top = overrides.get("top") or 3
@@ -117,10 +127,10 @@ class ChatReadRetrieveReadApproach(Approach):
             "text" : self.text_search,
             "all"  : self.combine_search
         }
-        method = self.determine_search_method(question)
-        print(f"answering '{question}' using {method} index")
+        # method = self.determine_search_method(question)
+        # print(f"answering '{question}' using {method} index")
         # response = search_processor[method](question,history, overrides)
-        response = self.combine_search(question, history, overrides)
+        response = self.text_search(question, history, overrides)
 
         print(response)
         if bool(useBingSearch) == False:          
@@ -166,7 +176,8 @@ class ChatReadRetrieveReadApproach(Approach):
         completion = openai.ChatCompletion.create(
             engine=self.chatgpt_deployment,
             messages=chat_message,
-            temperature=0.0
+            temperature=0.0,
+            # max_tokens = 2000
         )
         wrap_upped_answer = completion['choices'][0]['message']['content']
         print(wrap_upped_answer)
@@ -189,7 +200,7 @@ class ChatReadRetrieveReadApproach(Approach):
     
     def knowledge_graph_search(self, question, history: list[dict], overrides: dict):
         result = self.kg_search.query(question)
-        json_result = {"sourcepage": result.get_formatted_sources(), "content": result.response, "sourcepage_path":""}
+        json_result = [{"sourcepage": result.get_formatted_sources(), "content": result.response, "sourcepage_path":""}]
         print(json_result)
         return json.dumps(json_result, ensure_ascii=False)
 
@@ -228,13 +239,16 @@ class ChatReadRetrieveReadApproach(Approach):
         else:
             json_results = [{"sourcepage": doc[self.sourcepage_field], "content": nonewlines(doc[self.content_field]), "sourcepage_path": doc[self.sourcepage_path_field]} for doc in r if doc['@search.score']]
 
-        json_results = json.dumps(json_results, ensure_ascii=False)
+        # json_results = json.dumps(json_results, ensure_ascii=False)
         return json_results
 
     def combine_search(self, question, history: list[dict], overrides: dict):
         kg_response = self.knowledge_graph_search(question, history, overrides)
         text_response = self.text_search(question, history, overrides)
-        return kg_response+text_response
+        kg_obj = json.loads(kg_response)
+        text_obj = json.loads(text_response)
+        kg_obj.append(text_obj)
+        return json.dumps(kg_obj)
 
     def get_chat_history_as_text(self, history, include_last_turn=True, approx_max_tokens=1000):
         history_text = ""

@@ -13,3 +13,13 @@ tiktoken
 llama-index
 nltk
 Flask-Reuploaded
+pymongo
+Pillow
+torch
+transformers
+sentencepiece
+protobuf==3.20
+openpyxl
+pandas
+qdrant_client
+pymupdf

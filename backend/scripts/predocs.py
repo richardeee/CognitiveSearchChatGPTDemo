@@ -14,6 +14,8 @@ from azure.search.documents.indexes.models import *
 from azure.search.documents import SearchClient
 from azure.ai.formrecognizer import DocumentAnalysisClient
 import base64
+import openai
+
 MAX_SECTION_LENGTH = 1000
 SENTENCE_SEARCH_LIMIT = 100
 SECTION_OVERLAP = 100
@@ -163,7 +165,10 @@ def get_document_text(filename):
                 if table_id == -1:
                     page_text += form_recognizer_results.content[page_offset + idx]
                 elif not table_id in added_tables:
-                    page_text += table_to_html(tables_on_page[table_id])
+                    table_text = table_to_html(tables_on_page[table_id])
+                    # table_discription = get_table_description_text(table_text)
+                    page_text += table_text
+                    # page_text += table_discription
                     added_tables.add(table_id)
 
             page_text += " "
@@ -171,6 +176,30 @@ def get_document_text(filename):
             offset += len(page_text)
 
     return page_map
+def get_table_description_text(table_text):
+    prompt = """以自然语言描述下面这个表格，要求保持数据准确，保留所有表格中的数据和信息 {text} """
+    openai.api_type = "azure"
+    openai.api_key = "8d9d5bed67804a7aa7119b46b85a307c"
+    openai.api_base = "https://openai-helpdesk.openai.azure.com/"
+    openai.api_version = "2023-03-15-preview"
+
+    message = [
+        {
+            "role":"user",
+            "content": prompt.format(text=table_text)
+        }
+    ]
+    try:
+        completion = openai.ChatCompletion.create(
+                engine="gpt-4",
+                messages=message,
+                temperature=0.0
+        )
+        table_description = completion['choices'][0]['message']['content']
+        print(table_description)
+    except:
+        table_description = ""
+    return table_description
 
 def split_text(page_map):
     SENTENCE_ENDINGS = [".", "!", "?"]

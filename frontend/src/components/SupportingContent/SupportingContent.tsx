@@ -12,7 +12,7 @@ export const SupportingContent = ({ supportingContent }: Props) => {
     console.log('supportingContentList' + supportingContentList)
     return (
         <ul className={styles.supportingContentNavList}>
-            {supportingContentList.map((x, i) => {
+            {supportingContentList.map((x: any, i: any) => {
                 const parsed = parseSupportingContentItem(x);
 
                 return (

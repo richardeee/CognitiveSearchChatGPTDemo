@@ -1,0 +1,2 @@
+import{r as n}from"./react-c38c8745.js";var c=()=>n.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentOwner.current,d=()=>!1,u=new WeakSet;function l(r,t){const e=c();n.useEffect(()=>{if(!u.has(e)){u.add(e),r();return}return r()},t)}var o=new WeakSet;function E(r,t){return n.useMemo(()=>{const e=c();return o.has(e)?r():(o.add(e),null)},t)}function p(r,t){var e;const s=d()&&!1,a=s?E:n.useMemo,i=s?l:n.useEffect,[f,_]=(e=a(()=>r(),t))!=null?e:[null,()=>null];return i(()=>_,t),f}export{p as u};
+//# sourceMappingURL=use-disposable-b8c3bd10.js.map
