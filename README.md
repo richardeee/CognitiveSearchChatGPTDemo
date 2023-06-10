@@ -5,7 +5,7 @@ This is a demo application build upon this Github repo.
 
 Visit https://github.com/Azure-Samples/azure-search-openai-demo
 
-**Warning**
+:warning:
 This demo is still under construction, please don't be superised if you see dummy code or encounter bugs.
 
 ## Preview
