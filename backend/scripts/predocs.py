@@ -18,7 +18,7 @@ import openai
 
 MAX_SECTION_LENGTH = 1000
 SENTENCE_SEARCH_LIMIT = 100
-SECTION_OVERLAP = 100
+SECTION_OVERLAP = 200
 
 parser = argparse.ArgumentParser(
     description="Prepare documents by extracting content from PDFs, splitting content into sections, uploading to blob storage, and indexing in a search index.",
@@ -191,7 +191,7 @@ def get_table_description_text(table_text):
     ]
     try:
         completion = openai.ChatCompletion.create(
-                engine="gpt-4",
+                engine="gpt-35-turbo",
                 messages=message,
                 temperature=0.0
         )
@@ -202,8 +202,8 @@ def get_table_description_text(table_text):
     return table_description
 
 def split_text(page_map):
-    SENTENCE_ENDINGS = [".", "!", "?"]
-    WORDS_BREAKS = [",", ";", ":", " ", "(", ")", "[", "]", "{", "}", "\t", "\n"]
+    SENTENCE_ENDINGS = [".", "!", "?","。"]
+    WORDS_BREAKS = [",", ";", ":", " ", "(", ")", "[", "]", "{", "}", "\t", "\n", "，", "；", "："]
     if args.verbose: print(f"Splitting '{filename}' into sections")
 
     def find_page(offset):
@@ -260,20 +260,51 @@ def split_text(page_map):
         
     if start + SECTION_OVERLAP < end:
         yield (all_text[start:end], find_page(start))
+def get_key_words(text):
+    prompt = """Now you act as a keyword extraction agent. I will give you some text and you need to extract the keywords in that text.
+1. Generate no more than 10 keywords.
+2. If you can't find any meaningful keywords, output ```None```
+3. The text I give you will start with ```Text:```
+
+Now here is my text, extract keywords from below text, extract keywords in Chinese:
+    Text: {text}
+    Keywords:"""
+    openai.api_type = "azure"
+    openai.api_key = "8d9d5bed67804a7aa7119b46b85a307c"
+    openai.api_base = "https://openai-helpdesk.openai.azure.com/"
+    openai.api_version = "2023-03-15-preview"
+    try:
+        completion = openai.Completion.create(
+            engine='text-davinci-003', 
+            prompt=prompt.format(text=text), 
+            temperature=0.0, 
+            max_tokens=500, 
+            n=1, 
+            stop=["\n"])
+        key_words = completion.choices[0].text
+        if key_words == "None":
+            key_words = ""
+        print(key_words)
+    except:
+        key_words = ""
+    return key_words
 
 def create_sections(filename, page_map):
     for i, (section, pagenum) in enumerate(split_text(page_map)):
         encoded_id = base64.urlsafe_b64encode(f"{filename}-{i}-section-{i}".encode('utf-8'))
         encoded_id_str = str(encoded_id.decode('utf-8'))
+        key_words = get_key_words(section)
+
         yield {
             # "id": re.sub("[^0-9a-zA-Z_-]","_",f"{filename}-{i}"),
             "id": encoded_id_str,
             "content": section,
             "category": args.category,
+            "key_words": key_words,
             "sourcepage": blob_name_from_file_page(filename, pagenum),
             "sourcefile": filename,
-            "metadata_storage_name": os.path.basename(filename),
-            "metadata_storage_path": f"https://{args.storageaccount}.blob.core.windows.net/{args.container}/{args.folder}/{os.path.basename(filename)}"
+            "metadata_storage_name": blob_name_from_file_page(filename, pagenum),
+            "metadata_storage_path": f"https://{args.storageaccount}.blob.core.windows.net/{args.container}/{args.folder}/{blob_name_from_file_page(filename, pagenum)}"
         }
 
 def create_search_index():
@@ -285,10 +316,13 @@ def create_search_index():
             name=args.index,
             fields=[
                 SimpleField(name="id", type="Edm.String", key=True),
-                SearchableField(name="content", type="Edm.String", analyzer_name="en.microsoft"),
+                SearchableField(name="content", type="Edm.String", analyzer_name="zh.microsoft"),
                 SimpleField(name="category", type="Edm.String", filterable=True, facetable=True),
                 SimpleField(name="sourcepage", type="Edm.String", filterable=True, facetable=True),
-                SimpleField(name="sourcefile", type="Edm.String", filterable=True, facetable=True)
+                SimpleField(name="sourcefile", type="Edm.String", filterable=True, facetable=True),
+                SimpleField(name="metadata_storage_name", type="Edm.String", filterable=True, facetable=True),
+                SimpleField(name="metadata_storage_path", type="Edm.String", filterable=True, facetable=True),
+                SimpleField(name="key_words", type="Edm.String", filterable=True, facetable=True)
             ],
             semantic_settings=SemanticSettings(
                 configurations=[SemanticConfiguration(
@@ -345,6 +379,8 @@ else:
         create_search_index()
     
     print(f"Processing files...")
+    # Count process time
+    start_time = time.time()
     for filename in glob.glob(args.files):
         if args.verbose: print(f"Processing '{filename}'")
         if args.remove:
@@ -359,3 +395,6 @@ else:
             page_map = get_document_text(filename)
             sections = create_sections(os.path.basename(filename), page_map)
             index_sections(os.path.basename(filename), sections)
+    end_time = time.time()
+    # Print process time in hour, minute, second
+    print(f"Process time: {time.strftime('%H:%M:%S', time.gmtime(end_time - start_time))}")

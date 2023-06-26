@@ -21,7 +21,7 @@ import tiktoken
 import math
 
 class ReadDecomposeAsk(Approach):
-    def __init__(self, search_client: SearchClient, openai_deployment: str, sourcepage_field: str, content_field: str, azure_openai_key: str, azure_openai_base: str, bing_search_subscriptin_key: str, bing_search_endpoint: str):
+    def __init__(self, search_client: SearchClient, openai_deployment: str, sourcepage_field: str, content_field: str, azure_openai_key: str, azure_openai_base: str, bing_search_subscriptin_key: str, bing_search_endpoint: str, sourcepage_path_field: str):
         self.search_client = search_client
         self.openai_deployment = openai_deployment
         self.sourcepage_field = sourcepage_field
@@ -30,6 +30,7 @@ class ReadDecomposeAsk(Approach):
         self.azure_openai_base = azure_openai_base
         self.bing_search_subscriptin_key = bing_search_subscriptin_key
         self.bing_search_endpoint = bing_search_endpoint
+        self.sourcepage_path_field = sourcepage_path_field
 
     def search(self, q: str, overrides: dict) -> str:
         use_semantic_captions = True if overrides.get("semantic_captions") else False
@@ -53,6 +54,10 @@ class ReadDecomposeAsk(Approach):
         else:
             self.results = [doc[self.sourcepage_field] + ":" + nonewlines(doc[self.content_field][:500]) for doc in r]
 
+        if use_semantic_captions:
+            self.json_results = [{"sourcepage": doc[self.sourcepage_field], "content": nonewlines(" . ".join([c.text for c in doc['@search.captions']])), "sourcepage_path": doc[self.sourcepage_path_field]} for doc in r]     
+        else:
+            self.json_results = [{"sourcepage": doc[self.sourcepage_field], "content": nonewlines(doc[self.content_field]), "sourcepage_path": doc[self.sourcepage_path_field]} for doc in r if doc['@search.score']]
         # Add Bing Search
         # search_result = self.get_bing_search_result(q, top)
         # self.results = self.results + search_result
@@ -79,11 +84,15 @@ class ReadDecomposeAsk(Approach):
         result = ''
         if answers and len(answers) > 0:
             result =  answers[0].text
+            print(answers[0])
+            self.json_results = [{"sourcepage": answers[0]['sourcepage'], "content": nonewlines(answers[0].text), "sourcepage_path": answers[0]['sourcepage_path']}]
         if r.get_count() > 0:
             result =  "\n".join(d['content'] for d in r)
+            print(result)
+            self.json_results = [{"sourcepage": d['sourcepage'], "content": nonewlines(d['content']), "sourcepage_path": d['sourcepage_path']} for d in r]
         
-        search_result = self.lookup_bing_result(q,1)
-        result = result + search_result
+        # search_result = self.lookup_bing_result(q,1)
+        # result = result + search_result
         return result        
 
     def run(self, q: str, overrides: dict) -> any:
@@ -128,7 +137,7 @@ class ReadDecomposeAsk(Approach):
             stop=["\nObservation:"], 
             allowed_tools=tool_names
         )
-        agent_executor = AgentExecutor.from_agent_and_tools(agent=agent, tools=tools, verbose=True)
+        agent_executor = AgentExecutor.from_agent_and_tools(agent=agent, tools=tools, verbose=True,callbacks=[cb_handler])
         result = agent_executor.run(q)
 
         # agent = ReAct.from_llm_and_tools(llm, tools)
@@ -138,7 +147,10 @@ class ReadDecomposeAsk(Approach):
         # Fix up references to they look like what the frontend expects ([] instead of ()), need a better citation format since parentheses are so common
         # result = result.replace("(", "[").replace(")", "]")
 
-        return {"data_points": self.results or [], "answer": result, "thoughts": cb_handler.get_and_reset_log()}
+        data_points = []
+        if hasattr(self, 'json_results'):
+            data_points = [{"sourcepage": d['sourcepage'], "content": nonewlines(d['content']), "sourcepage_path": d['sourcepage_path']} for d in self.json_results]
+        return {"data_points": data_points, "answer": result, "thoughts": cb_handler.get_and_reset_log()}
     
     def get_bing_search_result(self, question, top):
         print("-------------------------searching: " + question + "-------------------------")
@@ -281,11 +293,22 @@ class CustomPromptTemplate(BaseChatPromptTemplate):
         return [HumanMessage(content=formatted)]
        
 TEMPLATES = """
-Answer questions as shown in the following examples, by splitting the question into individual search or lookup actions to find facts until you can answer the question.
-Observations are prefixed by their source name in square brackets, source names MUST be included with the actions in the answers."
-Only answer the questions using the information from observations, do not speculate. Translate the question into actions and observations, then answer the question using the observations.
-Observations MUST be in the format of the example observations. 
-Translate the answer to Chinese
+Assistant is a large language model trained by OpenAI.
+Assistant is designed to be able to assist with a wide range of tasks, from answering simple questions to providing in-depth explanations and discussions on a wide range of topics. As a language model, Assistant is able to generate human-like text based on the input it receives, allowing it to engage in natural-sounding conversations and provide responses that are coherent and relevant to the topic at hand.
+Assistant is constantly learning and improving, and its capabilities are constantly evolving. It is able to process and understand large amounts of text, and can use this knowledge to provide accurate and informative responses to a wide range of questions. Additionally, Assistant is able to generate its own text based on the input it receives, allowing it to engage in discussions and provide explanations and descriptions on a wide range of topics.
+Overall, Assistant is a powerful tool that can help with a wide range of tasks and provide valuable insights and information on a wide range of topics. Whether you need help with a specific question or just want to have a conversation about a particular topic, Assistant is here to assist.
+1. You can provide additional relevant details to responde thoroughly and comprehensively to cover multiple aspects in depth.
+2. You should always answer user questions based on the context provided.
+3. If the context does not provide enough information, you answer ```I don't know``` or ```I don't understand```.
+4. You should not answer questions that are not related to the context.
+5. You should explain the reasons behind your answers.
+6. Answer in HTML format.
+7. Answer in Simplified Chinese.
+8. If there's images in the context, you should display them in your answer.
+9. Use HTML table format to display tabular data.
+
+Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
+Don't use reference, ALWAYS keep source page pth in (), e.g. (http://www.somedomain1.com/info1.txt)(http://www.somedomain2.com/info2.pdf).
 
 You have access to the following tools:{tools}
 To use a tool, please use the following format:

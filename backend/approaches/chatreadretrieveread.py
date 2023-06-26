@@ -24,6 +24,7 @@ Overall, Assistant is a powerful tool that can help with a wide range of tasks a
 7. Answer in Simplified Chinese.
 8. If there's images in the context, you should display them in your answer.
 9. Use HTML table format to display tabular data.
+10. Ask any questions you need for more information. Ask the question in multiple choice format, one at a time.
 
 Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
 Don't use reference, ALWAYS keep source page pth in (), e.g. (http://www.somedomain1.com/info1.txt)(http://www.somedomain2.com/info2.pdf).
@@ -73,7 +74,7 @@ Don't use reference, ALWAYS keep source page pth in (), e.g. (http://www.somedom
     CONTEXT:
     {sources}
     问题:
-    {question}
+    {question}. Ask any questions you need for more information, one at a time.
     回答:
     """
     
@@ -171,6 +172,7 @@ Don't use reference, ALWAYS keep source page pth in (), e.g. (http://www.somedom
             chat_message = system_message + chat_histroy_message
             chat_message.append(user_question_message)
         else:
+            chat_message = system_message
             chat_message.append(user_question_message)
         
         completion = openai.ChatCompletion.create(
