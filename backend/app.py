@@ -87,7 +87,7 @@ search_credential = AzureKeyCredential(AZURE_COGNITIVE_SEARCH_KEY)
 openai.api_type = "azure"
 openai.api_key = AZURE_OPENAI_API_KEY_SOUTH_CENTRAL_US
 openai.api_base = AZURE_OPENAI_BASE
-openai.api_version = "2023-03-15-preview"
+openai.api_version = "2023-05-15"
 
 # Comment these two lines out if using keys, set your API key in the OPENAI_API_KEY environment variable instead
 # openai.api_type = "azure_ad"

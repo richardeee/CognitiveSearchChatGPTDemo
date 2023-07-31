@@ -1,5 +1,5 @@
 Flask==2.2.2
-langchain==0.0.160
+langchain==0.0.215
 openai==0.27.6
 azure-search-documents==11.4.0b3
 azure-storage-blob==12.14.1
@@ -23,3 +23,8 @@ openpyxl
 pandas
 qdrant_client
 pymupdf
+num2words 
+matplotlib 
+plotly 
+scipy 
+scikit-learn

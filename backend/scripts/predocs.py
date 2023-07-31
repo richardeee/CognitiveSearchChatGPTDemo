@@ -16,9 +16,9 @@ from azure.ai.formrecognizer import DocumentAnalysisClient
 import base64
 import openai
 
-MAX_SECTION_LENGTH = 1000
-SENTENCE_SEARCH_LIMIT = 100
-SECTION_OVERLAP = 200
+MAX_SECTION_LENGTH = 4000
+SENTENCE_SEARCH_LIMIT = 1000
+SECTION_OVERLAP = 1000
 
 parser = argparse.ArgumentParser(
     description="Prepare documents by extracting content from PDFs, splitting content into sections, uploading to blob storage, and indexing in a search index.",

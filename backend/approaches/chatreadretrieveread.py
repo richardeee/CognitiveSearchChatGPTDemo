@@ -1,14 +1,25 @@
 import openai
+from openai.embeddings_utils import get_embedding
 from azure.search.documents import SearchClient
 from azure.search.documents.models import QueryType
 from approaches.approach import Approach
-from approaches.index.gptindex import GPTKGIndexer
 from text import nonewlines
 import requests
 import json
+import os
+import pymongo
+from string import Template
+from dotenv import load_dotenv
+load_dotenv()
 # Simple retrieve-then-read implementation, using the Cognitive Search and OpenAI APIs directly. It first retrieves
 # top documents from search, then constructs a prompt with them, and then uses OpenAI to generate an completion 
 # (answer) with that prompt.
+
+AZURE_QA_COSMOS_URL = os.environ.get("AZURE_QA_COSMOS_URL") or None
+AZURE_QA_DB_NAME = os.environ.get("AZURE_QA_DB_NAME") or None
+AZURE_QA_COLLECTION_NAME = os.environ.get("AZURE_QA_COLLECTION_NAME") or None
+AZURE_EMBEDDING_DEPLOYMENT_NAME = os.environ.get("AZURE_EMBEDDING_DEPLOYMENT_NAME") or None
+
 class ChatReadRetrieveReadApproach(Approach):
     prompt_prefix = """
 Assistant is a large language model trained by OpenAI.
@@ -24,7 +35,7 @@ Overall, Assistant is a powerful tool that can help with a wide range of tasks a
 7. Answer in Simplified Chinese.
 8. If there's images in the context, you should display them in your answer.
 9. Use HTML table format to display tabular data.
-10. Ask any questions you need for more information. Ask the question in multiple choice format, one at a time.
+10. Ask a question if you need for more information. Ask the question in multiple choice format, one at a time.
 
 Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
 Don't use reference, ALWAYS keep source page pth in (), e.g. (http://www.somedomain1.com/info1.txt)(http://www.somedomain2.com/info2.pdf).
@@ -107,6 +118,45 @@ Don't use reference, ALWAYS keep source page pth in (), e.g. (http://www.somedom
     Here is the user question:
     {question}
     """
+
+    qa_prompt_template = Template("""
+    Here are some answers from the knowledge base. You need to determine if the answer is relevant to the question.
+    1. If the answer can answer the question, return 'yes'.
+    2. If the answer cannot answer the question, return 'no'.
+    3. If the answer can answer the question, but not completely, return 'partial'.
+
+    for example:
+    context:
+    {
+        "sourcepage": "QA优化库",
+        "content": "question: 条码扫描仪故障，是什么原因，如何解决: answer: 根据1，条码扫描仪故障可能是由于系统故障导致试剂条码设备工作异常。",
+        "sourcepage_path": ""
+    }
+    question: 条码扫描仪故障
+    answer: partial
+
+    context:
+    {
+        "sourcepage": "QA优化库",
+        "content": "question: 样本针末及时到达，是什么原因，如何解决: answer: 根据1，样本未及时到达的可能原因包括!
+    1.变轨机构水平位置不正确，导致卡滞现象
+    2.SDM需要升级。
+    3.FFH2传感器和FFH3传感器异常。
+    4.前段轨道控制驱动板故障
+    解决措施包括:
+    1.调整变轨机构水平位置，确保没有卡滞现象。
+    2.使用upgrade tool对SDM进行升级，再用dmn进行升级。3.对FFH2传感器、FFH3传感器进行跳变诊断，如有异常，进行更换4.更换前段轨道控制驱动板。",
+        "sourcepage_path": ""
+    }
+    question: 样本针末及时到达，是什么原因，如何解决
+    answer: yes
+
+    context:
+    ${sources}
+    question: ${question}
+    answer:
+    """)
+
     def __init__(self, search_client: SearchClient, chatgpt_deployment: str, gpt_deployment: str, sourcepage_field: str, content_field: str, sourcepage_path_field: str, subscription_key: str, bing_search_endpoint: str):
         self.search_client = search_client
         self.chatgpt_deployment = chatgpt_deployment
@@ -116,34 +166,15 @@ Don't use reference, ALWAYS keep source page pth in (), e.g. (http://www.somedom
         self.bing_search_subscriptin_key = subscription_key
         self.bing_search_endpoint = bing_search_endpoint
         self.sourcepage_path_field = sourcepage_path_field
+        self.client = pymongo.MongoClient(AZURE_QA_COSMOS_URL)
+        self.mydb = self.client[AZURE_QA_DB_NAME]
+        self.collection = self.mydb[AZURE_QA_COLLECTION_NAME]
         # self.kg_search = GPTKGIndexer()
 
     def run(self, history: list[dict], overrides: dict) -> any:
         top = overrides.get("top") or 3
         question = history[-1]["user"]
         useBingSearch = overrides.get("use_bing_search") or False
-        # STEP 0: Use OpenAI to determine index
-        search_processor = {
-            "graph": self.knowledge_graph_search,
-            "text" : self.text_search,
-            "all"  : self.combine_search
-        }
-        # method = self.determine_search_method(question)
-        # print(f"answering '{question}' using {method} index")
-        # response = search_processor[method](question,history, overrides)
-        response = self.text_search(question, history, overrides)
-
-        print(response)
-        if bool(useBingSearch) == False:          
-            supporting_facts = response
-            print("supporting_facts from cognitive search: " + str(supporting_facts))
-        else:
-            search_result = self.get_bing_search_result(question, top)
-            bing_search_result = "\n".join(search_result)
-            response = bing_search_result
-            supporting_facts = search_result
-            print("supporting_facts from bing search: " + str(supporting_facts))
-        
         # STEP 3: Generate a response with the retrieved documents as prompt
         follow_up_questions_prompt = self.follow_up_questions_prompt_content if overrides.get("suggest_followup_questions") else ""
         
@@ -156,6 +187,74 @@ Don't use reference, ALWAYS keep source page pth in (), e.g. (http://www.somedom
         else:
             prompt = prompt_override.format(chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
 
+        # STEP 0: Use OpenAI to determine index
+        search_processor = {
+            "graph": self.knowledge_graph_search,
+            "text" : self.text_search,
+            "all"  : self.combine_search
+        }
+        # method = self.determine_search_method(question)
+        # print(f"answering '{question}' using {method} index")
+        # response = search_processor[method](question,history, overrides)
+
+        # Search QA database to see if there is already an answer
+        if AZURE_QA_COSMOS_URL is not None:
+            qa_result = self.qa_search(question, history, overrides)
+
+            print(qa_result)
+            qa_prompt = self.qa_prompt_template.substitute(sources=qa_result, question=history[-1]["user"])
+            print(qa_prompt)
+            completion = openai.Completion.create(
+                engine=self.gpt_deployment, 
+                prompt=qa_prompt, 
+                temperature=0.0, 
+                max_tokens=50, 
+                )
+            
+            if_qa_answered = completion.choices[0].text
+            print(f"if_qa_answered: {if_qa_answered}")
+
+            if str(if_qa_answered).strip() == "yes":
+                system_message = [{
+                "role": "system",
+                "content": f"{prompt}"
+                }]
+                chat_histroy_message = self.get_chat_history_as_text(history, include_last_turn=False)
+                user_question_with_sources = self.user_question_prompt.format(sources = qa_result, question=question)
+                user_question_message = {
+                    "role": "user",
+                    "content": user_question_with_sources
+                }
+                chat_message=[]
+                if len(chat_histroy_message) > 0:
+                    chat_message = system_message + chat_histroy_message
+                    chat_message.append(user_question_message)
+                else:
+                    chat_message = system_message
+                    chat_message.append(user_question_message)
+                
+                completion = openai.ChatCompletion.create(
+                    engine=self.chatgpt_deployment,
+                    messages=chat_message,
+                    temperature=0.0,
+                    # max_tokens = 2000
+                )
+                wrap_upped_answer = completion['choices'][0]['message']['content']
+                return {"data_points": qa_result, "answer": wrap_upped_answer, "thoughts": f"{prompt}" + user_question_with_sources.replace('\n', '<br>')}
+            else:
+                supporting_facts = qa_result
+        # print(response)
+        if bool(useBingSearch) == False:
+            response = self.text_search(question, history, overrides)          
+            supporting_facts += response
+            print("supporting_facts from cognitive search: " + str(supporting_facts))
+        else:
+            search_result = self.get_bing_search_result(question, top)
+            bing_search_result = "\n".join(search_result)
+            response = bing_search_result
+            supporting_facts = search_result
+            print("supporting_facts from bing search: " + str(supporting_facts))
+        
         # STEP 4: Generate a contextual and content specific answer using the search results and chat history
         system_message = [{
             "role": "system",
@@ -206,6 +305,31 @@ Don't use reference, ALWAYS keep source page pth in (), e.g. (http://www.somedom
         print(json_result)
         return json.dumps(json_result, ensure_ascii=False)
 
+    def qa_search(self, question, history, overrides):
+        question_embedding = get_embedding(question, engine=AZURE_EMBEDDING_DEPLOYMENT_NAME)
+        results = self.collection.aggregate([
+            {
+            '$search': {
+                "cosmosSearch": {
+                "vector": question_embedding,
+                "path": "vectorContent",
+                "k": 1
+                },
+            "returnStoredSource": True
+            }
+            }
+        ])
+        search_result = [
+            {
+                "sourcepage": "QA优化库",
+                "content": f"问题:{r['question']}: 答案:{r['answer']}",
+                "sourcepage_path": "http://oai-callcenter.azurewebsites.net/qa"
+            }
+            for r in results
+        ]
+        # json_results = json.dumps(search_result, ensure_ascii=False)
+        return search_result
+    
     def text_search(self, question,history: list[dict], overrides: dict):
         use_semantic_captions = True if overrides.get("semantic_captions") else False
         top = overrides.get("top") or 3
